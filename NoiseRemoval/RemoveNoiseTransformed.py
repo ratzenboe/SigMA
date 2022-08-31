@@ -3,7 +3,7 @@ from scipy.optimize import minimize
 import networkx as nx
 from miscellaneous.utils import flatten_listlist
 from scipy.sparse.csgraph import connected_components
-from Modality.DensityEstKNN import DensityEstKNN
+from SigMA.DensityEstimator import DensityEstKNN
 from NoiseRemoval.ClusterGMM import gmm_cut
 from Graph.extract_neighbors import neighboring_modes
 from NoiseRemoval.OptimalVelocity import optimize_velocity, transform_velocity, transform_velocity_diff, vr_solver

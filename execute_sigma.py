@@ -74,6 +74,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # nargs=?   ...0 or 1 arguments
     # const     ...if argument is provided but no value, e.g., program.py --beta, instead of, program.py --beta 0.99
+    parser.add_argument("-f", "--data", type=str, help="Data path")
     parser.add_argument(
         "-b", "--beta",
         type=float, nargs='?', const=0.99, default=0.99,
@@ -89,7 +90,6 @@ if __name__ == "__main__":
         type=int, nargs='?', const=30, default=30,
         help="Number of resampled data sets (for modality test)"
     )
-    parser.add_argument("-f", "--data_fpath", type=str, help="Data path")
     parser.add_argument(
         "-a", "--alpha",
         type=float, nargs='?', const=0.05, default=0.05,
@@ -127,7 +127,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     # Obtain data
-    data, cluster_features = prepare_data(args.data_fpath)
+    data, cluster_features = prepare_data(args.data)
     # Steps in scale space (knn density estimation)
     knn_list = np.arange(args.knn_min, args.knn_max + args.knn_delta, args.knn_delta)
     # Scale factors

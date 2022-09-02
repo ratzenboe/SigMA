@@ -57,7 +57,7 @@ def main(data, cluster_features, dist_min, dist_max):
     sigma_kwargs = dict(
         cluster_features=cluster_features,
         nb_resampling=0,
-        max_knn_density=10,
+        max_knn_density=26,
         beta=beta,
         knn_initcluster_graph=knn
     )
@@ -69,6 +69,7 @@ def main(data, cluster_features, dist_min, dist_max):
         scale_factors=scale_factors,
         **sigma_kwargs
     )
+    clusterer.initialize_clustering(knn=25, saddle_point_candidate_threshold=40)
     # Get label files
     files = sm.files_in_session_dir()
     # Remove noise

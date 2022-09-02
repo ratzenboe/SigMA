@@ -70,6 +70,7 @@ def main(data, cluster_features, dist_min, dist_max):
         **sigma_kwargs
     )
     clusterer.initialize_clustering(knn=25, saddle_point_candidate_threshold=40)
+    clusterer.initialize_mode_neighbor_dict()
     # Get label files
     files = sm.files_in_session_dir()
     # Remove noise

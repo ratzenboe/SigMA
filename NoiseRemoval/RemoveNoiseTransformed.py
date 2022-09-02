@@ -2,16 +2,15 @@ import numpy as np
 from scipy.sparse.csgraph import connected_components
 from SigMA.DensityEstimator import DensityEstKNN
 from NoiseRemoval.ClusterGMM import gmm_cut
-from NoiseRemoval.OptimalVelocity import optimize_velocity, transform_velocity, transform_velocity_diff, vr_solver
+from NoiseRemoval.OptimalVelocity import optimize_velocity, transform_velocity, vr_solver
 
 
 def rn_obtain_data(
-        data,
+        data_full,
         cluster_bool_arr,
         te_obj,
         pos_cols,
         nb_neigh_density,
-        data_full,
         ra_col, dec_col, plx_col, pmra_col, pmdec_col, rv_col, rv_err_col,
         adjacency_mtrx,
         uvw_cols=None,
@@ -20,7 +19,7 @@ def rn_obtain_data(
         min_cluster_size=10
 ):
     # ----- Part-I: extract dense core -------
-    data_idx = np.arange(data.shape[0])
+    data_idx = np.arange(data_full.shape[0])
     # --- (a) Get densest components of overall mixture of cluster and BG ---
     _, cluster_labels, _, _, _, is_good_clustering = gmm_cut(te_obj.weights_[cluster_bool_arr], n_components=2)
     if not is_good_clustering:
@@ -108,13 +107,13 @@ def rn_obtain_data(
                                               'data_idx': data_idx[cut_dense_neighs]}, True
 
 
-def remove_noise_sigma(data, cluster_bool_arr, te_obj,
+def remove_noise_sigma(data_full, cluster_bool_arr, te_obj,
                        pos_cols, nb_neigh_density,
-                       data_full, ra_col, dec_col, plx_col, pmra_col, pmdec_col, rv_col, rv_err_col,
+                       ra_col, dec_col, plx_col, pmra_col, pmdec_col, rv_col, rv_err_col,
                        adjacency_mtrx, uvw_cols=None, radius=8, verbose=False, min_cluster_size=10
                        ):
     # ----- Part-I: extract dense core -------
-    data_idx = np.arange(data.shape[0])
+    data_idx = np.arange(data_full.shape[0])
     # --- (a) Get densest components of overall mixture of cluster and BG ---
     _, cluster_labels, _, _, _, is_good_clustering = gmm_cut(te_obj.weights_[cluster_bool_arr], n_components=2)
     if not is_good_clustering:
@@ -211,7 +210,7 @@ def remove_noise_sigma(data, cluster_bool_arr, te_obj,
     mean_completeness_fraction = np.mean(completeness_fraction)
 
     # Prepare output
-    final_clustering_strict = cluster_member_arr >= 10  # More than 75% of hits
+    final_clustering_strict = cluster_member_arr >= 10  # More than 50% of hits
     if np.sum(final_clustering_strict) >= min_cluster_size:
         # Keep connected components
         _, cc_idx = connected_components(adjacency_mtrx[final_clustering_strict, :][:, final_clustering_strict])

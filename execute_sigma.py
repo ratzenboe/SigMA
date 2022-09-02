@@ -1,5 +1,5 @@
 from SigMA.SigMA import SigMA
-from miscellaneous import SessionManager
+from miscellaneous.SessionManager import SessionManager
 from SigMA.velcoity_scale_factors import scale_samples
 import time
 import datetime
@@ -37,7 +37,7 @@ def prepare_data(fname):
 
 def main(data, cluster_features, alpha, beta, knn_init_graph, nb_resampling, knn_list, scale_factors_list):
     # first create session manager and session directory
-    sm = SessionManager('./sessions')
+    sm = SessionManager('sessions')
     sm.create_dir(f'scocen_extraction-beta_{int(beta * 100)}-knn_{knn_init_graph}-nb_resampling_{nb_resampling}')
     # Define SigMA kwargs
     sigma_kwargs = dict(

@@ -36,5 +36,8 @@ class SessionManager:
         return os.path.join(self.session_dir, fname)
 
     def files_in_session_dir(self):
-        files_in_session = [f for f in os.listdir(self.session_dir) if os.path.isfile(os.path.join(self.session_dir, f))]
+        files_in_session = [os.path.join(self.session_dir, f)
+                            for f in os.listdir(self.session_dir)
+                            if os.path.isfile(os.path.join(self.session_dir, f))
+                            ]
         return files_in_session

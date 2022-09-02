@@ -50,15 +50,14 @@ def remove_noise(clusterer, data, labels):
 
 
 def main(data, cluster_features, dist_min, dist_max):
-
     sm = SessionManager('sessions')
     sm.set_session_most_recent()
     beta, knn, nb_resampling = get_parameters(sm.session_dir)
     # Create clusterer object
     sigma_kwargs = dict(
         cluster_features=cluster_features,
-        nb_resampling=nb_resampling,
-        max_knn_density=50,
+        nb_resampling=0,
+        max_knn_density=10,
         beta=beta,
         knn_initcluster_graph=knn
     )

@@ -13,8 +13,8 @@ import os
 
 
 def get_parameters(fpath):
-    beta, knn, nb_resampling = re.findall('scocen_extraction-beta_(.+)-knn_(.+)-nb_resampling_(.+)', fpath)[0]
-    return float(beta), int(knn), int(nb_resampling)
+    beta, knn, nb_resampling = re.findall('scocen_extraction-beta_(.+)-knn_(.+)-nb_resampling_(.+)/', fpath)[0]
+    return float(beta)/100, int(knn), int(nb_resampling)
 
 
 def remove_noise(clusterer, data, labels):

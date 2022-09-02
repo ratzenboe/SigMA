@@ -210,7 +210,7 @@ def remove_noise_sigma(data_full, cluster_bool_arr, te_obj,
     mean_completeness_fraction = np.mean(completeness_fraction)
 
     # Prepare output
-    final_clustering_strict = cluster_member_arr >= 10  # More than 50% of hits
+    final_clustering_strict = cluster_member_arr > 5  # More than 50% of hits
     if np.sum(final_clustering_strict) >= min_cluster_size:
         # Keep connected components
         _, cc_idx = connected_components(adjacency_mtrx[final_clustering_strict, :][:, final_clustering_strict])

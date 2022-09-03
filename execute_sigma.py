@@ -132,8 +132,8 @@ if __name__ == "__main__":
     knn_list = np.arange(args.knn_min, args.knn_max + args.knn_delta, args.knn_delta)
     # Scale factors
     dist_min, dist_max, dist_samples = args.distance_min, args.distance_max, args.distance_samples
-    dist_min_data = np.min(1000/data.parallax)
-    dist_max_data = np.max(1000 / data.parallax)
+    dist_min_data = np.percentile(1000/data.parallax, 5)
+    dist_max_data = np.percentile(1000 / data.parallax, 95)
     if dist_min < dist_min_data:
         dist_min = dist_min_data
     if dist_max > dist_max_data:

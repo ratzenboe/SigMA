@@ -108,8 +108,8 @@ if __name__ == "__main__":
 
     # Scale factors
     dist_min, dist_max = args.distance_min, args.distance_max
-    dist_min_data = np.min(1000/data.parallax)
-    dist_max_data = np.max(1000 / data.parallax)
+    dist_min_data = np.percentile(1000/data.parallax, 5)
+    dist_max_data = np.percentile(1000 / data.parallax, 95)
     if dist_min < dist_min_data:
         dist_min = dist_min_data
     if dist_max > dist_max_data:

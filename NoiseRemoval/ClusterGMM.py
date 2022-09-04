@@ -17,7 +17,7 @@ def gmm_cut(data2fit, n_components=2):
         # Get maximum value per class
         max_value_per_class = [np.max(data2fit[gmm_lbls == li]) for li in np.unique(gmm_lbls)]
         # Fail save
-        if n_trials > 50:
+        if n_trials > 20:
             print(f'Input unable to be clustered into {n_components} classes')
             return None, None, None, None, None, False
         n_trials += 1
@@ -35,16 +35,21 @@ def gmm_cut(data2fit, n_components=2):
     # Get details of Gaussians
     mu_bg = gmm.means_.flatten()[arg_bg_model]
     var_bg = gmm.covariances_.flatten()[arg_bg_model]
+    p_bg = gmm.weights_.flatten()[arg_bg_model]
     sigma_bg = np.sqrt(var_bg)
-    # Compute contamination fraction
-    contamination_fraction = 1 - stats.norm.cdf(th, mu_bg, sigma_bg)
-    # Simple completeness estimate via the false negatives
+    # --- Simple completeness estimate via the false negatives
     arg_sig_model = np.argmax(gmm.means_.flatten())
     # Get details of Gaussians
     mu_sig = gmm.means_.flatten()[arg_sig_model]
     var_sig = gmm.covariances_.flatten()[arg_sig_model]
+    p_sig = gmm.weights_.flatten()[arg_sig_model]
     sigma_sig = np.sqrt(var_sig)
     completeness_fraction = 1 - stats.norm.cdf(th, mu_sig, sigma_sig)
+    # --- Compute contamination fraction:
+    # ∫ p(z=bg) p(x|z=bg) dx
+    bg_ge_th = p_bg * (1 - stats.norm.cdf(th, mu_bg, sigma_bg))
+    # ∫ p(z=sig) p(x|z=sig) dx
+    sig_ge_th = p_sig * (1 - stats.norm.cdf(th, mu_sig, sigma_sig))
+    contamination_fraction = bg_ge_th/(bg_ge_th+sig_ge_th)
 
     return gmm, cluster_labels, th, contamination_fraction, completeness_fraction, True
-

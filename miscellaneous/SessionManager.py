@@ -24,6 +24,16 @@ class SessionManager:
         os.mkdir(self.session_dir)
         return
 
+    def create_subdir(self, name=None):
+        """Create session folder with given name or current date/time"""
+        if name is None:
+            now = datetime.datetime.now()
+            name = now.strftime("%Y-%m-%d-%H-%M-%S")
+        # Set to current session folder and create folder
+        self.session_dir = os.path.join(self.session_dir, name)
+        os.mkdir(self.session_dir)
+        return
+
     def get_most_recent(self):
         """Returns most recently created session folder"""
         most_recent_dir = max(glob.glob(os.path.join(self.parent_dir, '*/')), key=os.path.getmtime)

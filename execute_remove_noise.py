@@ -82,6 +82,9 @@ def main(data, cluster_features, dist_min, dist_max, isin_scocen):
     clusterer.initialize_mode_neighbor_dict()
     # Get label files
     files = sm.files_in_session_dir()
+    # Create new subdirectory
+    now = datetime.datetime.now()
+    sm.create_subdir('noise_removal_' + now.strftime("%Y-%m-%d-%H-%M-%S"))
     # Remove noise
     for fname in files:
         labels = np.load(fname)
@@ -92,7 +95,7 @@ def main(data, cluster_features, dist_min, dist_max, isin_scocen):
         # Save reduced information
         fbase, fext = os.path.splitext(os.path.basename(fname))
         # Save result
-        np.savez(sm.get_fpath(fbase + 'noise_removed' + '.npz'),
+        np.savez(sm.get_fpath(fbase + '_noise_removed' + '.npz'),
                  labels=clustering_res,
                  nearest_neighbors_arr=nearest_neighbors_arr
                  )

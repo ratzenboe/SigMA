@@ -11,6 +11,7 @@ from execute_sigma import prepare_data
 import re
 import os
 import copy
+import pickle
 
 
 def remove_noscocen(labels, isin_scocen, minsize=15):
@@ -27,18 +28,25 @@ def get_parameters(fpath):
 
 
 def remove_noise(clusterer, data, labels):
+    # Get radial velcity bounds
+    rv = data.radial_velocity.values
+    rv = rv[np.isfinite(rv)]
+    rv_min, rv_max = np.percentile(rv, 1), np.percentile(rv, 99)
+    # Labels shape
     clustering_res = -np.ones(data.shape[0], dtype=np.int32)
     nearest_neighbors_arr = []
+    extra_infos = {}
     st = time.time()
     z = 0
     for unique_id in np.unique(labels):
         # print(f'Removing noise from cluster {all_columns}')
-        cluster_member_arr, _, _, is_good_cluster = remove_noise_sigma(
+        cluster_member_arr, contamination_completeness, rv_info, is_good_cluster = remove_noise_sigma(
             data_full=data,
             cluster_bool_arr=labels == unique_id,
             te_obj=clusterer,
             pos_cols=['X', 'Y', 'Z'],
             nb_neigh_density=20,
+            rv_min=rv_min, rv_max=rv_max,
             ra_col='ra', dec_col='dec', plx_col='parallax', pmra_col='pmra', pmdec_col='pmdec',
             rv_col='radial_velocity', rv_err_col='radial_velocity_error', uvw_cols=None,  # ['u', 'v', 'w'],
             adjacency_mtrx=clusterer.A,
@@ -50,12 +58,18 @@ def remove_noise(clusterer, data, labels):
             nearest_neighbors_arr.append(nearest_neighbor_distribution(clusterer.X[cluster_member_arr], 7))
             # Save clustering result
             clustering_res[cluster_member_arr] = z
+            # store extra infos
+            extra_infos[z] = {
+                'contamination_completeness': contamination_completeness,
+                'rv_info': rv_info
+            }
+            # Increment counter
             z += 1
     # Timing
     delta_t = str(datetime.timedelta(seconds=time.time() - st)).split('.')[0]
     print(f'Done! [took {delta_t}]. Found {np.unique(clustering_res).size} clusters.')
     # ----- Return clustering restult -----
-    return clustering_res, nearest_neighbors_arr
+    return clustering_res, nearest_neighbors_arr, extra_infos
 
 
 def main(data, cluster_features, dist_min, dist_max, isin_scocen):
@@ -91,14 +105,19 @@ def main(data, cluster_features, dist_min, dist_max, isin_scocen):
         if isin_scocen is not None:
             labels = remove_noscocen(labels=labels, isin_scocen=isin_scocen)
 
-        clustering_res, nearest_neighbors_arr = remove_noise(clusterer, data, labels)
+        clustering_res, nearest_neighbors_arr, extra_infos = remove_noise(clusterer, data, labels)
         # Save reduced information
         fbase, fext = os.path.splitext(os.path.basename(fname))
         # Save result
-        np.savez(sm.get_fpath(fbase + '_noise_removed' + '.npz'),
-                 labels=clustering_res,
-                 nearest_neighbors_arr=nearest_neighbors_arr
-                 )
+        save_result = {
+            'labels': clustering_res,
+            'nearest_neighbors_arr': nearest_neighbors_arr,
+            'extra_infos': extra_infos
+        }
+        # Pickle results
+        with open(sm.get_fpath(fbase + '_noise_removed' + '.pickle'), 'wb') as handle:
+            pickle.dump(save_result, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
     return
 
 
@@ -128,7 +147,7 @@ if __name__ == "__main__":
 
     # Scale factors
     dist_min, dist_max = args.distance_min, args.distance_max
-    dist_min_data = np.percentile(1000/data.parallax, 5)
+    dist_min_data = np.percentile(1000 / data.parallax, 5)
     dist_max_data = np.percentile(1000 / data.parallax, 95)
     if dist_min < dist_min_data:
         dist_min = dist_min_data

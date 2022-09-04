@@ -10,6 +10,15 @@ from NoiseRemoval.ClusterSelection import nearest_neighbor_distribution
 from execute_sigma import prepare_data
 import re
 import os
+import copy
+
+
+def remove_noscocen(labels, isin_scocen, minsize=15):
+    lcopy = copy.deepcopy(labels)
+    for ul in np.unique(lcopy):
+        if np.sum((lcopy == ul) & isin_scocen) < minsize:
+            lcopy[lcopy == ul] = -1
+    return lcopy
 
 
 def get_parameters(fpath):
@@ -49,7 +58,7 @@ def remove_noise(clusterer, data, labels):
     return clustering_res, nearest_neighbors_arr
 
 
-def main(data, cluster_features, dist_min, dist_max):
+def main(data, cluster_features, dist_min, dist_max, isin_scocen):
     sm = SessionManager('sessions')
     sm.set_session_most_recent()
     beta, knn, nb_resampling = get_parameters(sm.session_dir)
@@ -76,6 +85,9 @@ def main(data, cluster_features, dist_min, dist_max):
     # Remove noise
     for fname in files:
         labels = np.load(fname)
+        if isin_scocen is not None:
+            labels = remove_noscocen(labels=labels, isin_scocen=isin_scocen)
+
         clustering_res, nearest_neighbors_arr = remove_noise(clusterer, data, labels)
         # Save reduced information
         fbase, fext = os.path.splitext(os.path.basename(fname))
@@ -92,6 +104,8 @@ if __name__ == "__main__":
     # nargs=?   ...0 or 1 arguments
     # const     ...if argument is provided but no value, e.g., program.py --beta, instead of, program.py --beta 0.99
     parser.add_argument("-f", "--data", type=str, help="Data path")
+    parser.add_argument("-s", "--scocen", type=str, default='',
+                        help="Sco-Cen data location")
     parser.add_argument(
         '-d0', '--distance_min',
         type=float, nargs='?', const=-1.0, default=-1.0,
@@ -105,6 +119,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     # Obtain data
     data, cluster_features = prepare_data(args.data)
+    isin_scocen = None
+    if os.path.isfile(args.scocen):
+        isin_scocen = np.load(args.scocen)
 
     # Scale factors
     dist_min, dist_max = args.distance_min, args.distance_max
@@ -115,6 +132,6 @@ if __name__ == "__main__":
     if dist_max > dist_max_data:
         dist_max = dist_max_data
 
-    main(data, cluster_features, dist_min, dist_max)
+    main(data, cluster_features, dist_min, dist_max, isin_scocen)
 
 

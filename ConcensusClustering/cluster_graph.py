@@ -159,7 +159,7 @@ class ClusterEnsemble:
             H.remove_nodes_from(bc)
         return cliques_extracted
 
-    def noise_cluster_removal(self, labels_final, mode_count, min_cluster_size, min_overlaps, js_sig_min):
+    def noise_cluster_removal(self, labels_final, mode_count, min_cluster_size, min_overlaps, js_sig_min, min_occurance=2):
         # --- Input clusters without noise part
         notnoise = [l for l in self.labels_bool_dict2arr.keys() if l not in self.noise_labels]
         # --- Remove noise clusters based on 2 conditions
@@ -180,10 +180,10 @@ class ClusterEnsemble:
                 labels_final[labels_final == uid] = -1
 
         # --- Remove unstable points that only appear once in cluster extraction
-        labels_final[mode_count <= 1] = -1
+        labels_final[mode_count < min_occurance] = -1
         return labels_final
 
-    def fit(self, density, min_cluster_size=15, min_overlaps=2, js_sig_min=2):
+    def fit(self, density, min_cluster_size=15, min_overlaps=2, js_sig_min=2, min_occurance=2):
         # --- Partition graph into cliques
         cluster_candidate_groups = self.find_cliques_subgraph(density=density)
         nb_unique_labels = np.unique([elem for ccg in cluster_candidate_groups for elem in ccg]).size
@@ -198,5 +198,7 @@ class ClusterEnsemble:
         labels_final, mode_count = mode(voting_arr, nan_policy='omit', axis=0)
         labels_final = np.array(labels_final.flatten().astype(int))
         mode_count = np.array(mode_count.flatten().astype(int))
-        labels_final = self.noise_cluster_removal(labels_final, mode_count, min_cluster_size, min_overlaps, js_sig_min)
+        labels_final = self.noise_cluster_removal(
+            labels_final, mode_count, min_cluster_size, min_overlaps, js_sig_min, min_occurance
+        )
         return labels_final

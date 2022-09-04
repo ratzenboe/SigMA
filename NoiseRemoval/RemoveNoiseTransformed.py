@@ -108,7 +108,7 @@ def rn_obtain_data(
 
 
 def remove_noise_sigma(data_full, cluster_bool_arr, te_obj,
-                       pos_cols, nb_neigh_density,
+                       pos_cols, nb_neigh_density, rv_min, rv_max,
                        ra_col, dec_col, plx_col, pmra_col, pmdec_col, rv_col, rv_err_col,
                        adjacency_mtrx, uvw_cols=None, radius=8, verbose=False, min_cluster_size=10
                        ):
@@ -151,17 +151,20 @@ def remove_noise_sigma(data_full, cluster_bool_arr, te_obj,
     # calculate rv for cases without rv estimations or very large errors
     # Minimize distance to optimal velocity for the following data points (cut_dense_neighs)
     ra, dec, plx, pmra, pmdec, rv, rv_err = data_full.iloc[cut_dense_neighs][cols].values.T
-    idx_arr = np.arange(rv.size)
     rv_isnan_or_large_err = np.isnan(rv)  # | (np.abs(rv / rv_err) < 2)  # for large errors find better suited rvs
     # Estimating rv for ~rv_isnan_or_large_err sources
     rv_computed = np.copy(rv)
-    rv_computed[rv_isnan_or_large_err] = vr_solver(U=optimal_vel[0], V=optimal_vel[1], W=optimal_vel[2],
-                                                   ra=ra[rv_isnan_or_large_err],
-                                                   dec=dec[rv_isnan_or_large_err],
-                                                   plx=plx[rv_isnan_or_large_err],
-                                                   pmra=pmra[rv_isnan_or_large_err],
-                                                   pmdec=pmdec[rv_isnan_or_large_err]
-                                                   )
+    rv_computed[rv_isnan_or_large_err] = vr_solver(
+        U=optimal_vel[0], V=optimal_vel[1], W=optimal_vel[2],
+        ra=ra[rv_isnan_or_large_err],
+        dec=dec[rv_isnan_or_large_err],
+        plx=plx[rv_isnan_or_large_err],
+        pmra=pmra[rv_isnan_or_large_err],
+        pmdec=pmdec[rv_isnan_or_large_err]
+    )
+    # Bound radial velocity by physical bounds
+    rv_computed[rv_isnan_or_large_err & (rv_computed > rv_max)] = rv_max
+    rv_computed[rv_isnan_or_large_err & (rv_computed < rv_min)] = rv_min
     # Prepare bool array for data
     cluster_member_arr = np.zeros(data_full.shape[0], dtype=int)
 
@@ -208,6 +211,14 @@ def remove_noise_sigma(data_full, cluster_bool_arr, te_obj,
     # Mean contamination fraction
     mean_contamination_fraction = np.mean(contamination_fraction)
     mean_completeness_fraction = np.mean(completeness_fraction)
+    contamination_completeness = {
+        'contamination': mean_contamination_fraction,
+        'completeness': mean_completeness_fraction
+    }
+    rv_info = {
+        'rv_computed': rv_computed,
+        'data_idx': data_idx[cut_dense_neighs]
+    }
 
     # Prepare output
     final_clustering_strict = cluster_member_arr > 5  # More than 50% of hits
@@ -217,9 +228,9 @@ def remove_noise_sigma(data_full, cluster_bool_arr, te_obj,
         # Combine CCs data points with originally defined dense core (to not miss out on potentially dropped points)
         cluster_indices = data_idx[final_clustering_strict][cc_idx == np.argmax(np.bincount(cc_idx))]
         cluster_final_xyzuvw = np.isin(data_idx, cluster_indices)
-        return cluster_final_xyzuvw, mean_contamination_fraction, mean_completeness_fraction, True
+        return cluster_final_xyzuvw, contamination_completeness, rv_info, True
     else:
-        return final_clustering_strict, mean_contamination_fraction, mean_completeness_fraction, False
+        return final_clustering_strict, contamination_completeness, rv_info, False
 
 
 def remove_noise_simple(cluster_bool_arr, te_obj, adjacency_mtrx=None):

@@ -152,7 +152,7 @@ class ClusterEnsemble:
             cliques = list(nx.find_cliques(H))
             # --- Maximize the minor jaccard distance --> promotes merging of clusters with subcluster
             best_clique = np.argmax(
-                [np.sum([[H[i][j]['similarity'] for i, j in product(c, c) if i != j]]) for c in cliques])
+                [np.sum([[H[i][j]['similarity_minor'] for i, j in product(c, c) if i != j]]) for c in cliques])
             bc = cliques[best_clique]
             cliques_extracted.append(bc)
             # --- remove from community graph

@@ -147,7 +147,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "-g", "--graph_knn",
-        type=int, nargs='?', const=30, default=30,
+        type=int, nargs='?', const=40, default=40,
         help="Maximal number of neighbors in initial beta skeleton graph"
     )
     parser.add_argument(

@@ -306,9 +306,9 @@ class ParameterClass(GraphSkeleton):
                     # pval_curr = 1 - norm.cdf(SB_alpha)
                     pval_curr = 1 - phi(SB_alpha)
                     p_values.append(pval_curr)
-                # pval_final = global_pvalue_hmp(p_values)
+                pval_final = global_pvalue_hmp(p_values)
                 # pval_final = global_pvalue_bonferroni(p_values)
-                pval_final = global_pvalue_fisher(p_values)
+                # pval_final = global_pvalue_fisher(p_values)
                 # Check if should merge or not
                 if pval_final > alpha:
                     uf_union(pg, pn, parents, densities)

@@ -55,7 +55,7 @@ def main(data, isin_file, cluster_features, alpha, beta, knn_init_graph, nb_resa
 
     # first create session manager and session directory
     sm = SessionManager('sessions')
-    sm.create_dir(f'scocen_extraction-beta_{int(beta * 100)}-knn_{knn_init_graph}-nb_resampling_{nb_resampling}')
+    sm.create_dir(f'extraction-beta_{int(beta * 100)}-knn_{knn_init_graph}-nb_resampling_{nb_resampling}')
     # Define SigMA kwargs
     sigma_kwargs = dict(
         cluster_features=cluster_features,
@@ -132,7 +132,7 @@ def main(data, isin_file, cluster_features, alpha, beta, knn_init_graph, nb_resa
             with open(sm.get_fpath(f'labels-knn_{knn}-scalef_{sf:.3f}.pickle'), 'wb') as handle:
                 pickle.dump(save_result, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-        return
+    return
 
 
 if __name__ == "__main__":

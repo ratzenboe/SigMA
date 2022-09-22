@@ -45,14 +45,12 @@ def remove_outlier_clusters(clustering_res, nearest_neighbors_arr, save_as_new_c
     bad_cluster_ids = nna_argsort[i:]
     # Replace or remove "bad" clusters
     max_clusternb = np.max(clustering_res)
-    if save_as_new_cluster:# Start with 4 clusters minimum
+    if save_as_new_cluster:
         new_cluster_nb = max_clusternb + 1
     else:
         new_cluster_nb = -1
     cr[np.isin(clustering_res, bad_cluster_ids)] = new_cluster_nb
-    # -1 --> noise labels should get -1 (are transformed to 0 as they are the smalles int in the list)
-    labels = LabelEncoder().fit_transform(cr) - 1
-    return labels, nna_medians[nna_argsort[i]]
+    return cr, nna_medians[nna_argsort[i]]
 
 
 def remove_outlier_by_nn_threshold(clustering_res, nearest_neighbors_arr, nn_median_th, save_as_new_cluster=False):
@@ -67,7 +65,6 @@ def remove_outlier_by_nn_threshold(clustering_res, nearest_neighbors_arr, nn_med
     final_th = np.max([nna_medians[neigh_idx.flatten()[0]], nn_median_th]) + 1e-4
     # Remove clusters with median distances larger than final_th
     bad_cluster_ids = np.argwhere(nna_medians > final_th).flatten()
-
     # Replace or remove "bad" clusters
     max_clusternb = np.max(clustering_res)
     if save_as_new_cluster:  # Start with 4 clusters minimum
@@ -75,6 +72,5 @@ def remove_outlier_by_nn_threshold(clustering_res, nearest_neighbors_arr, nn_med
     else:
         new_cluster_nb = -1
     cr[np.isin(clustering_res, bad_cluster_ids)] = new_cluster_nb
-    # -1 --> noise labels should get -1 (are transformed to 0 as they are the smalles int in the list)
-    labels = LabelEncoder().fit_transform(cr) - 1
-    return labels
+    return cr
+

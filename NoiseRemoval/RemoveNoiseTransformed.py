@@ -128,8 +128,10 @@ def remove_noise_sigma(data_full, cluster_bool_arr, te_obj,
         search_for_peak = np.union1d(search_for_peak, peak_neighbors)
     # Get dense component of peak
     cut_dense_neighs = np.isin(te_obj.leaf_labels_, search_for_peak)  # filtered points: modal and surrounding regions
-    _, cluster_labels_filter, _, fp_rate, fn_rate, is_good_clustering = gmm_cut(te_obj.weights_[cut_dense_neighs],
-                                                                                n_components=2)
+    _, cluster_labels_filter, _, fp_rate, fn_rate, is_good_clustering = gmm_cut(
+        te_obj.weights_[cut_dense_neighs],
+        n_components=2
+    )
     if not is_good_clustering:
         return None, None, None, False
     # Dense core points
@@ -185,15 +187,17 @@ def remove_noise_sigma(data_full, cluster_bool_arr, te_obj,
     # while the space density can vary from a dense core to a less dense corona
     contamination_fraction = []
     completeness_fraction = []
-    for scale in np.linspace(2, 10, 20):
+    rho2fit = []
+    for scale in np.linspace(2, 10, 6):
         xyzuvw = np.c_[data_full.iloc[cut_dense_neighs][pos_cols].values / scale, uvw_computed]
         # Compute densities
         duvw = DensityEstKNN(xyzuvw, nb_neigh_density)
         rho_uvw = duvw.knn_density(nb_neigh_density)
         # Predict membership via GMM with 2 components
-        _, cut_gmm_xyzuvw, _, fp_rate, fn_rate, is_good_clustering = gmm_cut(rho_uvw[cut_uvw_diff], n_components=2)
+        _, cut_gmm_xyzuvw, _, fp_rate, fn_rate, is_good_clustering = gmm_cut(rho_uvw[cut_uvw_diff], n_components='auto')
         contamination_fraction.append(fp_rate)
         completeness_fraction.append(fn_rate)
+        rho2fit.append(rho_uvw[cut_uvw_diff])
 
         if not is_good_clustering:
             return None, None, None, False
@@ -209,11 +213,13 @@ def remove_noise_sigma(data_full, cluster_bool_arr, te_obj,
         cluster_member_arr[cluster_indices] += 1
 
     # Mean contamination fraction
-    mean_contamination_fraction = np.mean(contamination_fraction)
-    mean_completeness_fraction = np.mean(completeness_fraction)
+    mean_contamination_fraction = np.median(contamination_fraction)
+    mean_completeness_fraction = np.median(completeness_fraction)
     contamination_completeness = {
         'contamination': mean_contamination_fraction,
-        'completeness': mean_completeness_fraction
+        'completeness': mean_completeness_fraction,
+        'rho2fit': rho2fit,
+        'data2fit': data_idx[cut_dense_neighs][cut_uvw_diff]
     }
     rv_info = {
         'rv_computed': rv_computed,
@@ -221,7 +227,7 @@ def remove_noise_sigma(data_full, cluster_bool_arr, te_obj,
     }
 
     # Prepare output
-    final_clustering_strict = cluster_member_arr > 5  # More than 50% of hits
+    final_clustering_strict = cluster_member_arr >= 3  # More than 50% of hits
     if np.sum(final_clustering_strict) >= min_cluster_size:
         # Keep connected components
         _, cc_idx = connected_components(adjacency_mtrx[final_clustering_strict, :][:, final_clustering_strict])

@@ -72,7 +72,7 @@ class ClusterEnsemble:
             c2 = self.unique_labels_transformed[j][e2]
             # --- don't add noise clusters to graph
             if (c1 not in self.noise_labels) and (c2 not in self.noise_labels):
-                # --- Store distance instead of similarity --> need small distances to hold up for MST
+                # --- Store distance, similarity, and minor Jaccard similarity
                 js_minor = self.jaccard_similarity_minor(i=c1, j=c2)
                 G.add_edge(c1, c2, distance=1 - jm[e1, e2], similarity=jm[e1, e2], similarity_minor=js_minor)
         return
@@ -142,7 +142,9 @@ class ClusterEnsemble:
         union = np.sum(added_arr > 0)
         return intersection / union
 
-    def find_cliques_subgraph(self, density):
+    def find_cliques_subgraph(self, density, similarity='similarity'):
+        if similarity not in ('similarity', 'similarity_minor'):
+            similarity = 'similarity_minor'
         # --- Get graph with "bad" edges removed
         H = self.remove_edges(density)
         cliques_extracted = []
@@ -152,14 +154,14 @@ class ClusterEnsemble:
             cliques = list(nx.find_cliques(H))
             # --- Maximize the minor jaccard distance --> promotes merging of clusters with subcluster
             best_clique = np.argmax(
-                [np.sum([[H[i][j]['similarity_minor'] for i, j in product(c, c) if i != j]]) for c in cliques])
+                [np.sum([[H[i][j][similarity] for i, j in product(c, c) if i != j]]) for c in cliques])
             bc = cliques[best_clique]
             cliques_extracted.append(bc)
             # --- remove from community graph
             H.remove_nodes_from(bc)
         return cliques_extracted
 
-    def noise_cluster_removal(self, labels_final, mode_count, min_cluster_size, min_overlaps, js_sig_min, min_occurance=2):
+    def noise_cluster_removal(self, labels_final, mode_count, min_cluster_size, min_overlaps, js_sig_min, min_occurance):
         # --- Input clusters without noise part
         notnoise = [l for l in self.labels_bool_dict2arr.keys() if l not in self.noise_labels]
         # --- Remove noise clusters based on 2 conditions
@@ -178,14 +180,13 @@ class ClusterEnsemble:
             # --- 2) At least three stable overlaps with existing cluster solutions
             if (counts[unique_labels >= min_overlaps].sum() < min_cluster_size) or (js_sig < js_sig_min):
                 labels_final[labels_final == uid] = -1
-
         # --- Remove unstable points that only appear once in cluster extraction
         labels_final[mode_count < min_occurance] = -1
         return labels_final
 
-    def fit(self, density, min_cluster_size=15, min_overlaps=2, js_sig_min=2, min_occurance=2):
+    def fit(self, density, similarity='similarity_minor', min_cluster_size=15, min_overlaps=2, js_sig_min=2, min_occurance=2):
         # --- Partition graph into cliques
-        cluster_candidate_groups = self.find_cliques_subgraph(density=density)
+        cluster_candidate_groups = self.find_cliques_subgraph(density=density, similarity=similarity)
         nb_unique_labels = np.unique([elem for ccg in cluster_candidate_groups for elem in ccg]).size
         voting_arr = np.full(shape=(nb_unique_labels, self.labels.shape[1]), fill_value=np.nan)
         # --- Each cluster in clique is labeled the same

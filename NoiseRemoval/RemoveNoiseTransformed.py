@@ -207,6 +207,10 @@ def remove_noise_sigma(data_full, cluster_bool_arr, te_obj,
             adjacency_mtrx[cut_dense_neighs, :][:, cut_dense_neighs][cut_uvw_diff, :][:, cut_uvw_diff][cut_gmm_xyzuvw,
             :][:,
             cut_gmm_xyzuvw])
+
+        if cc_idx.size < min_cluster_size:
+            return None, None, None, False
+
         # Combine CCs data points with originally defined dense core (to not miss out on potentially dropped points)
         cluster_indices = data_idx[cut_dense_neighs][cut_uvw_diff][cut_gmm_xyzuvw][
             cc_idx == np.argmax(np.bincount(cc_idx))]

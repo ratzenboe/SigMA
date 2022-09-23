@@ -27,7 +27,7 @@ def gmm_cut(X, n_components=2):
         mus=gmm.means_.flatten(), var=gmm.covariances_.flatten(), w=gmm.weights_.flatten()
     )
     # Maximum value/density class is the one with larger values than the maximum of the 2nd highest class values
-    cluster_labels = X > th
+    cluster_labels = X.flatten() > th
     # Compute contamination and completeness
     contamination_fraction = estimate_contamination(gmm, th)
     completeness_fraction = estimate_completeness(gmm, th)
@@ -70,7 +70,11 @@ def estimate_contamination(gmm, th):
         all_in_signal += pp_i
         if is_bg:
             bg_in_signal += pp_i
-    contamination = bg_in_signal/all_in_signal
+
+    if all_in_signal == 0:
+        contamination = 1
+    else:
+        contamination = bg_in_signal/all_in_signal
     return contamination
 
 
@@ -86,8 +90,12 @@ def estimate_completeness(gmm, th):
         if is_sig:
             pp_i = p_i * (1 - stats.norm.cdf(th, mu_i, sigma_i))
             isin_signal += pp_i
-    # Needs to be normalized with the sum of probabilities
-    completeness = isin_signal/np.sum(w[signal])
+    # In case no signal is found
+    if np.sum(signal) == 0:
+        completeness = 0
+    else:
+        # Needs to be normalized with the sum of probabilities
+        completeness = isin_signal/np.sum(w[signal])
     return completeness
 
 

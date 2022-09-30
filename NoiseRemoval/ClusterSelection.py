@@ -1,7 +1,6 @@
 import copy
 import numpy as np
 from sklearn.metrics import calinski_harabasz_score
-from sklearn.preprocessing import LabelEncoder
 from sklearn.neighbors import NearestNeighbors
 
 

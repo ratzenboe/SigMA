@@ -1,6 +1,3 @@
-import numpy as np
-
-
 # Flatten a list of lists
 def flatten_listlist(list_list):
     return [item for sublist in list_list for item in sublist]

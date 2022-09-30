@@ -4,6 +4,8 @@ import copy
 from MockData.affine_transformations import translate_points, rotate_points_3d
 from NoiseRemoval.TransformCoordinates import transform_inverse_UVW, transform_inverse_XYZ
 from miscellaneous.utils import isin_range
+from astropy.coordinates import LSR, SkyCoord, Distance
+import astropy.units as u
 
 
 class MockData:
@@ -139,15 +141,38 @@ class MockData:
         df_mock = pd.concat([sc_info['mock_data'] for sc_info in self.mock_info.values()], ignore_index=True)
         return df_mock
 
-    def embed_in_bg(self, data_clusters, data_bg, features, limits=None):
+    def embed_in_bg(self, data_clusters, data_bg, features):
         if ('labels' not in features) or ('labels' not in data_clusters.columns):
             raise KeyError('"labels" not provided')
 
         data_bg['labels'] = -1
         df = pd.concat([data_clusters[features], data_bg[features]], ignore_index=True)
+        return df.reset_index(drop=True)
+
+    def next(self, data_mock, labels, pos_axes, vel_axes, data_bg, features, min_members=30, limits=None):
+        df_new = self.new_sample(data_mock, labels, pos_axes, vel_axes, min_members=min_members)
+        df_new = df_new[features]
+        df_mix = self.embed_in_bg(data_clusters=df_new, data_bg=data_bg, features=features)
+        # Add tangential velocities in lsr
+        skycoord = SkyCoord(
+            ra=df_mix['ra'].values * u.deg,
+            dec=df_mix['dec'].values * u.deg,  # 2D on sky postition
+            distance=Distance(parallax=df_mix['parallax'].values * u.mas),  # distance in pc
+            pm_ra_cosdec=df_mix['pmra'].values * u.mas / u.yr,
+            pm_dec=df_mix['pmdec'].values * u.mas / u.yr,
+            radial_velocity=0. * u.km / u.s,
+            frame="icrs"
+        )
+        # Transform to lsr
+        pma_lsr = skycoord.transform_to(LSR()).pm_ra_cosdec.value
+        pmd_lsr = skycoord.transform_to(LSR()).pm_dec.value
+        df_mix['v_a_lsr'] = 4.74047 * pma_lsr / df_mix['parallax'].values
+        df_mix['v_d_lsr'] = 4.74047 * pmd_lsr / df_mix['parallax'].values
+
         # Remove sources if not in range
-        inrange = np.ones(df.shape[0], dtype=bool)
+        inrange = np.ones(df_mix.shape[0], dtype=bool)
         if limits is not None:
             for col, lim in limits.items():
-                inrange &= isin_range(df, col, lim)
-        return df.loc[inrange].reset_index(drop=True)
+                inrange &= isin_range(df_mix, col, lim).values
+
+        return df_mix.loc[inrange]

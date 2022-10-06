@@ -21,8 +21,8 @@ def validate_clutering(labels_true, labels_pred, verbose=False):
         'adjusted_mutual_info_score': adjusted_mutual_info_score(labels_true, labels_pred),
         'adjusted_rand_score': adjusted_rand_score(labels_true=labels_true, labels_pred=labels_pred),
         'acc': accuracy_score(labels_true, labels_pred),
-        'precision': precision_score(labels_true, labels_pred),
-        'recall': recall_score(labels_true, labels_pred),
+        'precision': precision_score(labels_true, labels_pred, average='weighted'),
+        'recall': recall_score(labels_true, labels_pred, average='weighted'),
         'balanced_acc': balanced_accuracy_score(y_true=labels_true, y_pred=labels_pred, adjusted=True),
         'matthews_coef': matthews_corrcoef(y_true=labels_true, y_pred=labels_pred),
     }
@@ -31,8 +31,8 @@ def validate_clutering(labels_true, labels_pred, verbose=False):
         'adjusted_mutual_info_score': adjusted_mutual_info_score(labels_true[sig], labels_pred[sig]),
         'adjusted_rand_score': adjusted_rand_score(labels_true=labels_true[sig], labels_pred=labels_pred[sig]),
         'acc': accuracy_score(labels_true[sig], labels_pred[sig]),
-        'precision': precision_score(labels_true[sig], labels_pred[sig]),
-        'recall': recall_score(labels_true[sig], labels_pred[sig]),
+        'precision': precision_score(labels_true[sig], labels_pred[sig], average='weighted'),
+        'recall': recall_score(labels_true[sig], labels_pred[sig], average='weighted'),
         'balanced_acc': balanced_accuracy_score(y_true=labels_true[sig], y_pred=labels_pred[sig], adjusted=True),
         'matthews_coef': matthews_corrcoef(y_true=labels_true[sig], y_pred=labels_pred[sig]),
     }

@@ -25,8 +25,6 @@ def validate_clutering(labels_true, labels_pred, verbose=False):
         'recall': recall_score(labels_true, labels_pred),
         'balanced_acc': balanced_accuracy_score(y_true=labels_true, y_pred=labels_pred, adjusted=True),
         'matthews_coef': matthews_corrcoef(y_true=labels_true, y_pred=labels_pred),
-        'N_true': ,
-        'N_pred': np.unique(labels_pred[labels_pred > -1]).size,
     }
     results_sig = {
         'nmi': nmi(labels_true[sig], labels_pred[sig]),

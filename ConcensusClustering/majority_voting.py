@@ -62,6 +62,6 @@ def majority_vote(labels, base_labels=None, return_counts=False):
     # vote
     labels_final, mode_count = mode(labels_copy, axis=0)
     if return_counts:
-        return labels_final[0], mode_count
+        return labels_final[0], mode_count[0]
     labels_final[mode_count < labels_copy.shape[0]/2] = -1
     return labels_final.flatten()

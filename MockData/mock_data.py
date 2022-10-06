@@ -1,11 +1,13 @@
 import numpy as np
 import pandas as pd
 import copy
-from MockData.affine_transformations import translate_points, rotate_points_3d
+from MockData.affine_transformations import translate_points, rotate_points_Nd
 from NoiseRemoval.TransformCoordinates import transform_inverse_UVW, transform_inverse_XYZ
 from miscellaneous.utils import isin_range
 from astropy.coordinates import LSR, SkyCoord, Distance
 import astropy.units as u
+
+rel_var = 0.25
 
 
 class MockData:
@@ -20,17 +22,23 @@ class MockData:
         all_axes = self.pos_axes + self.vel_axes
         for ul in np.unique(labels):
             cut = labels == ul
-            mean_info_ul = {col: m for m, col in zip(data.loc[cut, all_axes].mean().values, all_axes)}
+            # Take a random subset of 50% to compute mean --> introduce random mean location
+            nb_stars = np.sum(cut)
+            # Randomly selects half of the stars to compute the mean with
+            cut_compute_mean = np.random.random(nb_stars) < 0.5
+            mean_info_ul = {col: m for m, col in zip(
+                np.mean(data.loc[cut, all_axes].values[cut_compute_mean], axis=0), all_axes
+            )}
             mock_info[ul] = mean_info_ul
-            mock_info[ul]['nb_stars'] = np.sum(cut)
-            # Compute median absolute deviation in v_T space (to scale proper motions later)
+            mock_info[ul]['nb_stars'] = nb_stars
+            # Compute mean (!) absolute deviation in v_T space (to scale proper motions later)
             diff = (data.loc[cut, self.vel_axes] - data.loc[cut, self.vel_axes].mean()).values
             diff = np.linalg.norm(diff, axis=1)
-            mock_info[ul]['mad_vel'] = np.median(diff)
+            mock_info[ul]['mad_vel'] = np.mean(diff)
             # Same in XYZ space
             diff = (data.loc[cut, self.pos_axes] - data.loc[cut, self.pos_axes].mean()).values
             diff = np.linalg.norm(diff, axis=1)
-            mock_info[ul]['mad_pos'] = np.median(diff)
+            mock_info[ul]['mad_pos'] = np.mean(diff)
         return mock_info
 
     def randomize_star_count(self, mock_sizes, min_members=30):
@@ -44,7 +52,10 @@ class MockData:
             mock_cluster_representative = np.random.choice(p.size, p=p, size=1)[0]
             scocen_info['mock_representative'] = mock_cluster_representative
             # Determine number of mock stars: target number of stars should be about 10% more or less
-            new_nb_points = min(int(np.random.normal(nb_sc, nb_sc / 10, 1)[0]), mock_sizes[mock_cluster_representative])
+            new_nb_points = min(
+                int(np.random.normal(nb_sc, nb_sc * rel_var, 1)[0]),
+                mock_sizes[mock_cluster_representative]
+            )
             scocen_info['nb_mock'] = max(new_nb_points, min_members)
         return
 
@@ -75,8 +86,8 @@ class MockData:
             diff = (mock_cluster[vel_axes] - mock_cluster[vel_axes].mean()).values
             diff = np.linalg.norm(diff, axis=1)
             mad_pm = np.median(diff)
-            # Get random value around orginal value (10% variance)
-            mad_orig = np.random.normal(scocen_info['mad_vel'], scocen_info['mad_vel'] / 10, 1)[0]
+            # Get random value around orginal value (5% variance)
+            mad_orig = np.random.normal(scocen_info['mad_vel'], scocen_info['mad_vel'] * rel_var, 1)[0]
             # Scale proper motion axes
             mock_cluster[vel_axes] *= mad_orig / mad_pm
             # -- Scale XYZ --
@@ -84,8 +95,8 @@ class MockData:
             diff = (mock_cluster[pos_axes] - mock_cluster[pos_axes].mean()).values
             diff = np.linalg.norm(diff, axis=1)
             mad_xyz = np.median(diff)
-            # Get random value around orginal value (10% variance)
-            mad_orig = np.random.normal(scocen_info['mad_pos'], scocen_info['mad_pos'] / 10, 1)[0]
+            # Get random value around orginal value (5% variance)
+            mad_orig = np.random.normal(scocen_info['mad_pos'], scocen_info['mad_pos'] * rel_var, 1)[0]
             # Scale proper motion axes
             mock_cluster[pos_axes] *= mad_orig / mad_xyz
 
@@ -100,15 +111,22 @@ class MockData:
             # translate points
             pos_data = translate_points(pos_data, mean_xyz)
             vel_data = translate_points(vel_data, mean_vel)
-            # -- Rotate data in random diration --
-            # XYZ
-            vector = np.random.normal(loc=0.0, scale=1.0, size=3)
-            angle = np.random.random() * 360
-            pos_data = rotate_points_3d(pos_data, vector=vector, angle=angle)
-            # vel
-            vector = np.random.normal(loc=0.0, scale=1.0, size=3)
-            angle = np.random.random() * 360
-            vel_data = rotate_points_3d(vel_data, vector=vector, angle=angle)
+            # # -- Rotate data in random direction --
+            # data_phase_space_6D = np.concatenate([pos_data, vel_data], axis=1)
+            # angle = np.random.random() * 360
+            # v1 = np.random.normal(loc=0.0, scale=1.0, size=6)
+            # v2 = np.random.normal(loc=0.0, scale=1.0, size=6)
+            # data_phase_space_6D = rotate_points_Nd(data_phase_space_6D, v1=v1, v2=v2, angle=angle)
+            # # Get position and velocity data from 6D phase space vector
+            # pos_data, vel_data = data_phase_space_6D[:, :3], data_phase_space_6D[:, 3:]
+            # # XYZ
+            # vector = np.random.normal(loc=0.0, scale=1.0, size=3)
+            # angle = np.random.random() * 360
+            # pos_data = rotate_points_3d(pos_data, vector=vector, angle=angle)
+            # # vel
+            # vector = np.random.normal(loc=0.0, scale=1.0, size=3)
+            # angle = np.random.random() * 360
+            # vel_data = rotate_points_3d(vel_data, vector=vector, angle=angle)
             # Transform data to observables
             ra_dec_plx = transform_inverse_XYZ(pos_data)
             ra, dec, plx = ra_dec_plx.T
@@ -130,7 +148,7 @@ class MockData:
             scocen_info['mock_data'] = df
         return
 
-    def new_sample(self, data_mock, labels, pos_axes, vel_axes, min_members=30):
+    def ceate_sample(self, data_mock, labels, pos_axes, vel_axes, min_members=30):
         """Create a new mock catalog"""
         mock_sizes = np.array([np.sum(data_mock.labels == uc) for uc in np.unique(labels)])
         # Step 1: update number of stars per cluster
@@ -149,8 +167,8 @@ class MockData:
         df = pd.concat([data_clusters[features], data_bg[features]], ignore_index=True)
         return df.reset_index(drop=True)
 
-    def next(self, data_mock, labels, pos_axes, vel_axes, data_bg, features, min_members=30, limits=None):
-        df_new = self.new_sample(data_mock, labels, pos_axes, vel_axes, min_members=min_members)
+    def new_sample(self, data_mock, labels, pos_axes, vel_axes, data_bg, features, min_members=30, limits=None):
+        df_new = self.ceate_sample(data_mock, labels, pos_axes, vel_axes, min_members=min_members)
         df_new = df_new[features]
         df_mix = self.embed_in_bg(data_clusters=df_new, data_bg=data_bg, features=features)
         # Add tangential velocities in lsr

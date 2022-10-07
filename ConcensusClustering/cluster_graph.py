@@ -50,7 +50,8 @@ class ClusterEnsemble:
             # --- Add infos about i'th clustering solution
             self.unique_labels_transformed.append(np.unique(self.labels_transformed[i]))
             self.noise_labels.append(np.min(self.labels_transformed[i]))
-        # --- Create a mapping between each unique label in labels_transformed (independent of row) and the clustered points
+        # --- Create a mapping between each unique label in labels_transformed
+        # --- (independent of row) and the clustered points
         self.create_bool_labels()
         return
 

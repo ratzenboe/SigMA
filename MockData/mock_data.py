@@ -7,7 +7,7 @@ from miscellaneous.utils import isin_range
 from astropy.coordinates import LSR, SkyCoord, Distance
 import astropy.units as u
 
-rel_var = 0.25
+rel_var = 0.1
 
 
 class MockData:
@@ -31,7 +31,7 @@ class MockData:
             )}
             mock_info[ul] = mean_info_ul
             mock_info[ul]['nb_stars'] = nb_stars
-            # Compute mean (!) absolute deviation in v_T space (to scale proper motions later)
+            # Compute mean (!) absolute deviation in UVW space (to scale proper motions later)
             diff = (data.loc[cut, self.vel_axes] - data.loc[cut, self.vel_axes].mean()).values
             diff = np.linalg.norm(diff, axis=1)
             mock_info[ul]['mad_vel'] = np.mean(diff)

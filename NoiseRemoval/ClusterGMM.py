@@ -53,7 +53,12 @@ def find_threshold(data, labels, mus, var, w):
         else:
             bg_idx = sorted_by_mean[1]
     # Maximium value of 2nd highest value/denisty cluster
-    th = np.max(data[labels == bg_idx])
+    try:
+        th = np.max(data[labels == bg_idx])
+    except ValueError:
+        # Save way to choose the signal theshold in case the other methods didn't work out
+        bg_idx = sorted_by_mean[-2]
+        th = np.max(data[labels == bg_idx])
     return th
 
 

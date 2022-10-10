@@ -70,7 +70,7 @@ class SigMA(ParameterClass, PerturbedData):
             self.initialize_clustering(knn=knn)
         return
 
-    def fit(self, alpha: float, knn: int = None, saddle_point_candidate_threshold: int = 20):
+    def fit(self, alpha: float, knn: int = None, hypotest='hmp', saddle_point_candidate_threshold: int = 20):
         """
         :param alpha: significance level
         :param knn: knn density estimation parameter
@@ -85,7 +85,7 @@ class SigMA(ParameterClass, PerturbedData):
             # Compute k-distances for re-sampled data sets
             self.resample_k_distances()
 
-        labels = self.merge_clusters(knn=knn, alpha=alpha)
+        labels = self.merge_clusters(knn=knn, alpha=alpha, hypotest=hypotest)
         return labels
 
     def resample_k_distances(self):

@@ -22,7 +22,7 @@ class ClusterEnsemble:
         # Transformed labels that are -1 (i.e., noise) in original cluster labels
         self.noise_labels = []
         self.transform_labels()
-        # --- Graph connecting clustering solutions via jaccard similarity ---
+        # --- Graph connecting clustering solutions via Jaccard similarity ---
         self.G = nx.Graph()
         # --- Minimum spanning tree
         self.T = None

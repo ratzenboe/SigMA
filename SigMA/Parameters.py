@@ -281,7 +281,13 @@ class ParameterClass(GraphSkeleton):
             all_saddle_points.append(saddle_position)
         return np.array(all_saddle_points)
 
-    def merge_clusters(self, knn, alpha):
+    def merge_clusters(self, knn, alpha, hypotest='hmp'):
+        # Determine global hypothesis test function
+        if hypotest.lower() == 'hmp':
+            hp_function = global_pvalue_hmp
+        else:
+            hp_function = global_pvalue_fisher
+
         # prepare parameters for fitting
         parents = copy.deepcopy(self.leaf_labels_)  # parents get modified --> need a copy
         densities = self.knn_density(knn)
@@ -306,9 +312,8 @@ class ParameterClass(GraphSkeleton):
                     # pval_curr = 1 - norm.cdf(SB_alpha)
                     pval_curr = 1 - phi(SB_alpha)
                     p_values.append(pval_curr)
-                # pval_final = global_pvalue_hmp(p_values)
-                # pval_final = global_pvalue_bonferroni(p_values)
-                pval_final = global_pvalue_fisher(p_values)
+                # Evaluate global p-value
+                pval_final = hp_function(p_values)
                 # Check if should merge or not
                 if pval_final > alpha:
                     uf_union(pg, pn, parents, densities)

@@ -1,5 +1,5 @@
 import numpy as np
-from ConcensusClustering.majority_voting import get_new_labels
+from ConcensusClustering.majority_voting import match_labels_one2one
 from sklearn.metrics import normalized_mutual_info_score as nmi
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, adjusted_rand_score, matthews_corrcoef, \
                             adjusted_mutual_info_score, precision_score, recall_score
@@ -8,7 +8,7 @@ from sklearn.metrics import accuracy_score, balanced_accuracy_score, adjusted_ra
 def validate_clutering(labels_true, labels_pred, verbose=False):
     # Relabel to match original labels
     # ---- Get mapping from predicted labels to true labels
-    label_key = get_new_labels(labels_true, labels_pred)
+    label_key = match_labels_one2one(labels_true, labels_pred)
     # ---- Relabel m'th cluster solutions
     labels_pred = np.vectorize(label_key.get)(labels_pred)
     # Focus on clustered samples

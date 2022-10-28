@@ -4,7 +4,7 @@ from scipy.stats import mode
 import networkx as nx
 from itertools import product
 from collections import defaultdict
-from ConcensusClustering.majority_voting import compute_jaccard_matrix, majority_vote
+from ConcensusClustering.majority_voting import compute_jaccard_matrix
 
 
 class ClusterConsensus:
@@ -15,6 +15,7 @@ class ClusterConsensus:
             self.labels = labels[0]
         else:
             self.labels = np.vstack([l for l in labels])
+        self.indices = np.arange(self.labels.shape[1])
         # Labels transformed into unique indices: prevent overlaps between labels
         self.labels_transformed = None
         self.unique_labels_transformed = []
@@ -97,6 +98,45 @@ class ClusterConsensus:
         G_copy.remove_edges_from(re)
         return G_copy
 
+    def share_mode(self, i, j, density):
+        """Test if clusters i & j share the modal point"""
+        args_i = self.indices[self.labels_bool_dict2arr[i]]
+        args_j = self.indices[self.labels_bool_dict2arr[j]]
+
+        rho_i = density[args_i]
+        rho_j = density[args_j]
+
+        if rho_i.size > rho_j.size:
+            ind = np.argpartition(rho_i, -rho_j.size)[-rho_j.size:]
+            # compute Jaccard distance
+            jacc = np.intersect1d(args_j, args_i[ind]).size / np.union1d(args_j, args_i[ind]).size
+        else:
+            ind = np.argpartition(rho_j, -rho_i.size)[-rho_i.size:]
+            # compute Jaccard distance
+            jacc = np.intersect1d(args_i, args_j[ind]).size / np.union1d(args_i, args_j[ind]).size
+
+        return jacc > 0.5
+
+    def remove_edges_density(self, density):
+        G_copy = nx.Graph(self.G)
+        # --- test if we need to remove edges
+        e2js = {frozenset({e1, e2}): G_copy[e1][e2]['similarity'] for e1, e2 in G_copy.edges}
+        # --- remove edges with unmatching cluster solutions
+        remove_edges = []
+        for (e1, e2), js in e2js.items():
+            if js < 0.5:
+                js_minor = self.jaccard_similarity_minor(e1, e2)
+                if js_minor > 0.5:
+                    # --- test if overlap of modes exist
+                    shares_mode = self.share_mode(e1, e2, density)
+                    if not shares_mode:
+                        remove_edges.append((e1, e2))
+                else:
+                    remove_edges.append((e1, e2))
+
+        G_copy.remove_edges_from(remove_edges)
+        return G_copy
+
     def affinity_matrix(self):
         """In affinity matrix larger values indicate greater similarity between instances.
         Thus, here we save the similarity or (1 - self.G[i][j])
@@ -117,28 +157,46 @@ class ClusterConsensus:
             (self.labels_bool_dict2arr[i].astype(int) + self.labels_bool_dict2arr[j].astype(int)) == 2)
         return intersection / min(nb_i, nb_j)
 
-    def fit(self, min_cluster_size,
-            similarity_cut='similarity_minor', th=0.5, similarity_match='similarity', aggregation_func=np.sum):
+    def fit(self, density, min_cluster_size, similarity_match='similarity', norm=False, aggregation_function=None):
         # Remove bad connections
-        H = self.remove_edges(similarity=similarity_cut, threshold=th)
+        H = self.remove_edges_density(density)
         # Get cliques
         cliques = list(nx.find_cliques(H))
         # Represents final voting
         voting_arr = np.zeros(shape=(len(cliques), self.labels.shape[1]), dtype=np.float32)
         # Set-up voting array
         for clique_id, c in enumerate(cliques):
-            for cluster_id in c:
-                cluster_neighbor_similarity = [H[cluster_id][n][similarity_match] for n in H.neighbors(cluster_id)]
-                # Enter voting details for clique number "clique_id" and cluster "cluster_id"
-                voting_arr[clique_id][self.labels_bool_dict2arr[cluster_id]] = aggregation_func(
-                    cluster_neighbor_similarity)
-        labels_cliques = np.argmax(voting_arr, axis=0)
-        # Set bg to -1 (by majority voting)
+            clique_arr = np.zeros(shape=(self.labels.shape[1],), dtype=np.float32)
+
+            if len(c) > 1:
+                for cluster_id in c:
+                    clique_arr[self.labels_bool_dict2arr[cluster_id]] += 1
+            else:
+                clique_arr[self.labels_bool_dict2arr[c[0]]] = 1
+            # --- We multiply the clique by a factor proportional to its edge weights ---
+            # Get unique edges
+            clique_edges = {frozenset({c_id, n}): H[c_id][n][similarity_match] for c_id in c for n in H.neighbors(c_id)}
+            unique_edge_weights = list(clique_edges.values())
+            # Add clique to voting array
+            voting_arr[clique_id] = clique_arr
+            if aggregation_function is not None:
+                if len(c) > 1:
+                    voting_arr[clique_id] *= aggregation_function(unique_edge_weights)
+
+        # We remove small cliques/clusters
+        # --> This spurious cluster/clique removal produces -1 results where another clique might shine
+        # --> we go back to voting arr, remove those cliques and vote again
         mode_decision, _ = mode(self.labels, axis=0)
-        labels_cliques[mode_decision[0] == -1] = -1
-        # Remove very small clusters
-        unique, counts = np.unique(labels_cliques, return_counts=True)
-        spurious = unique[counts < min_cluster_size]
+        spurious = [1]
+        while len(spurious) > 0:
+            labels_cliques = np.argmax(voting_arr, axis=0)
+            # Set bg to -1 (by majority voting)
+            labels_cliques[mode_decision[0] == -1] = -1
+            # Remove very small clusters
+            unique, counts = np.unique(labels_cliques, return_counts=True)
+            spurious = unique[counts < min_cluster_size]
+            voting_arr = np.delete(voting_arr, spurious, axis=0)
+
         labels_cliques[np.isin(labels_cliques, spurious)] = -1
-        # Majority voting across input labels with clique basis
+
         return labels_cliques

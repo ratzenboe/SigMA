@@ -191,11 +191,15 @@ class ClusterConsensus:
         while len(spurious) > 0:
             labels_cliques = np.argmax(voting_arr, axis=0)
             # Set bg to -1 (by majority voting)
-            labels_cliques[mode_decision[0] == -1] = -1
-            # Remove very small clusters
-            unique, counts = np.unique(labels_cliques, return_counts=True)
-            spurious = unique[counts < min_cluster_size]
-            voting_arr = np.delete(voting_arr, spurious, axis=0)
+            if len(mode_decision[0] == -1) > 0:
+                labels_cliques[mode_decision[0] == -1] = -1
+                # Remove very small clusters
+                unique, counts = np.unique(labels_cliques, return_counts=True)
+                spurious = unique[counts < min_cluster_size]
+                voting_arr = np.delete(voting_arr, spurious, axis=0)
+            else:
+                # We break array here if no -1 samples are found
+                spurious = []
 
         labels_cliques[np.isin(labels_cliques, spurious)] = -1
 

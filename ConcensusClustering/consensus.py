@@ -167,10 +167,11 @@ class ClusterConsensus:
         # Set-up voting array
         for clique_id, c in enumerate(cliques):
             clique_arr = np.zeros(shape=(self.labels.shape[1],), dtype=np.float32)
-
             if len(c) > 1:
                 for cluster_id in c:
                     clique_arr[self.labels_bool_dict2arr[cluster_id]] += 1
+                if norm:
+                    clique_arr /= len(c)
             else:
                 clique_arr[self.labels_bool_dict2arr[c[0]]] = 1
             # --- We multiply the clique by a factor proportional to its edge weights ---
@@ -189,7 +190,12 @@ class ClusterConsensus:
         mode_decision, _ = mode(self.labels, axis=0)
         spurious = [1]
         while len(spurious) > 0:
-            labels_cliques = np.argmax(voting_arr, axis=0)
+            try:
+                labels_cliques = np.argmax(voting_arr, axis=0)
+            except ValueError:
+                print(f'Voting_arr: {voting_arr}')
+                return []
+
             # Set bg to -1 (by majority voting)
             if len(mode_decision[0] == -1) > 0:
                 labels_cliques[mode_decision[0] == -1] = -1

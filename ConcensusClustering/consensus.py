@@ -190,12 +190,7 @@ class ClusterConsensus:
         mode_decision, _ = mode(self.labels, axis=0)
         spurious = [1]
         while len(spurious) > 0:
-            try:
-                labels_cliques = np.argmax(voting_arr, axis=0)
-            except ValueError:
-                print(f'Voting_arr: {voting_arr}')
-                return []
-
+            labels_cliques = np.argmax(voting_arr, axis=0)
             # Set bg to -1 (by majority voting)
             if len(mode_decision[0] == -1) > 0:
                 labels_cliques[mode_decision[0] == -1] = -1

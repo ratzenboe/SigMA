@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/SigMA.iml" filepath="$PROJECT_DIR$/.idea/SigMA.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../density-deconvolution-astro/.idea/density-deconvolution-astro.iml" filepath="$PROJECT_DIR$/../density-deconvolution-astro/.idea/density-deconvolution-astro.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../PhD/pyprojects/.idea/pyprojects.iml" filepath="$PROJECT_DIR$/../../PhD/pyprojects/.idea/pyprojects.iml" />
+    </modules>
+  </component>
+</project>

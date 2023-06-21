@@ -13,10 +13,10 @@ def nearest_neighbor_distribution(data, k_neighbors=7):
 
 def maximize_ch_score(nearest_neighbors_arr):
     """
-    Iteratively create clustering by merging i densest and N-i lowest density clusters
+    Iteratively create clustering by merging i densest and the (N-i) least dense clusters
     and check if clustering "is good". Goodness is defined by maximizing
     the calinski_harabasz_score (tried others, this works best) --> looks for two prominent well separated peaks.
-    We suppose that the density of clusters in a region should approximately follow a singal modal distribution;
+    We suppose that the density of clusters in a region should approximately follow a single modal distribution;
     Thus, if we find 2 well separated peaks we remove the low density peak
     """
     # Compute median distances & sort them

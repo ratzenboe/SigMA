@@ -107,7 +107,15 @@ def rn_obtain_data(
                                               'data_idx': data_idx[cut_dense_neighs]}, True
 
 
-def remove_noise_sigma(data_full, cluster_bool_arr, te_obj,
+def remove_noise_quick_n_dirty(data_density, cluster_bool_arr):
+    # --- (a) Get densest components of overall mixture of cluster and BG ---
+    _, cluster_labels, _, _, _, is_good_clustering = gmm_cut(data_density[cluster_bool_arr], n_components=2)
+    if not is_good_clustering:
+        return None, False
+    return cluster_labels, True
+
+
+def remove_noise_sigma(data_full, cluster_bool_arr, rho,
                        pos_cols, nb_neigh_density, rv_min, rv_max,
                        ra_col, dec_col, plx_col, pmra_col, pmdec_col, rv_col, rv_err_col,
                        adjacency_mtrx, uvw_cols=None, radius=8, verbose=False, min_cluster_size=10
@@ -115,27 +123,29 @@ def remove_noise_sigma(data_full, cluster_bool_arr, te_obj,
     # ----- Part-I: extract dense core -------
     data_idx = np.arange(data_full.shape[0])
     # --- (a) Get densest components of overall mixture of cluster and BG ---
-    _, cluster_labels, _, _, _, is_good_clustering = gmm_cut(te_obj.weights_[cluster_bool_arr], n_components=2)
-    if not is_good_clustering:
-        return None, None, None, False
-    # --- (a) get labels of local cluster mode containing the peak
-    cluster_modes_dense = np.unique(te_obj.leaf_labels_[data_idx[cluster_bool_arr][cluster_labels]])
-    # Add neighbors of densest region that is in the cluster:
-    search_for_peak = cluster_modes_dense
-    for dense_cl in cluster_modes_dense:
-        peak_neighbors = np.intersect1d(te_obj.leaf_labels_[cluster_bool_arr],
-                                        te_obj.mode_neighbors(dense_cl))
-        search_for_peak = np.union1d(search_for_peak, peak_neighbors)
-    # Get dense component of peak
-    cut_dense_neighs = np.isin(te_obj.leaf_labels_, search_for_peak)  # filtered points: modal and surrounding regions
-    _, cluster_labels_filter, _, fp_rate, fn_rate, is_good_clustering = gmm_cut(
-        te_obj.weights_[cut_dense_neighs],
-        n_components=2
+    _, cluster_labels, _, fp_rate, fn_rate, is_good_clustering = gmm_cut(
+        rho[cluster_bool_arr], n_components=2
     )
     if not is_good_clustering:
         return None, None, None, False
+    # # --- (b) get labels of local cluster mode containing the peak
+    # cluster_modes_dense = np.unique(te_obj.leaf_labels_[data_idx[cluster_bool_arr][cluster_labels]])
+    # # Add neighbors of most dense region that is in the cluster:
+    # search_for_peak = cluster_modes_dense
+    # for dense_cl in cluster_modes_dense:
+    #     peak_neighbors = np.intersect1d(te_obj.leaf_labels_[cluster_bool_arr],
+    #                                     te_obj.mode_neighbors(dense_cl))
+    #     search_for_peak = np.union1d(search_for_peak, peak_neighbors)
+    # # Get dense component of peak
+    # cut_dense_neighs = np.isin(te_obj.leaf_labels_, search_for_peak)  # filtered points: modal and surrounding regions
+    # _, cluster_labels_filter, _, fp_rate, fn_rate, is_good_clustering = gmm_cut(
+    #     te_obj.weights_[cut_dense_neighs],
+    #     n_components=2
+    # )
+    if not is_good_clustering:
+        return None, None, None, False
     # Dense core points
-    cut_dense_core = data_idx[cut_dense_neighs][cluster_labels_filter]  # translate bool arr to data index
+    cut_dense_core = data_idx[cluster_bool_arr][cluster_labels]  # translate bool arr to data index
     if cut_dense_core.size < min_cluster_size:
         return None, None, None, False
 
@@ -152,7 +162,7 @@ def remove_noise_sigma(data_full, cluster_bool_arr, te_obj,
     optimal_vel = sol.x
     # calculate rv for cases without rv estimations or very large errors
     # Minimize distance to optimal velocity for the following data points (cut_dense_neighs)
-    ra, dec, plx, pmra, pmdec, rv, rv_err = data_full.iloc[cut_dense_neighs][cols].values.T
+    ra, dec, plx, pmra, pmdec, rv, rv_err = data_full.iloc[cluster_bool_arr][cols].values.T
     rv_isnan_or_large_err = np.isnan(rv)  # | (np.abs(rv / rv_err) < 2)  # for large errors find better suited rvs
     # Estimating rv for ~rv_isnan_or_large_err sources
     rv_computed = np.copy(rv)
@@ -178,7 +188,7 @@ def remove_noise_sigma(data_full, cluster_bool_arr, te_obj,
     cut_uvw_diff = uvw_calc_diff < radius
     if np.sum(cut_uvw_diff) < min_cluster_size:
         # if only very few stars are found that share the same velocity, focus on the dense core
-        return np.isin(data_idx, data_idx[cut_dense_neighs][cut_uvw_diff]), fp_rate, fn_rate, False
+        return np.isin(data_idx, data_idx[cluster_bool_arr][cut_uvw_diff]), fp_rate, fn_rate, False
     if verbose:
         print(f':: 3rd filter step: {np.sum(cut_uvw_diff)} in proximity to optimal velocity')
 
@@ -189,7 +199,7 @@ def remove_noise_sigma(data_full, cluster_bool_arr, te_obj,
     completeness_fraction = []
     rho2fit = []
     for scale in np.linspace(2, 10, 6):
-        xyzuvw = np.c_[data_full.iloc[cut_dense_neighs][pos_cols].values / scale, uvw_computed]
+        xyzuvw = np.c_[data_full.iloc[cluster_bool_arr][pos_cols].values / scale, uvw_computed]
         # Compute densities
         duvw = DensityEstKNN(xyzuvw, nb_neigh_density)
         rho_uvw = duvw.knn_density(nb_neigh_density)
@@ -204,7 +214,7 @@ def remove_noise_sigma(data_full, cluster_bool_arr, te_obj,
 
         # Extract connected component from dense component
         _, cc_idx = connected_components(
-            adjacency_mtrx[cut_dense_neighs, :][:, cut_dense_neighs][cut_uvw_diff, :][:, cut_uvw_diff][cut_gmm_xyzuvw,
+            adjacency_mtrx[cluster_bool_arr, :][:, cluster_bool_arr][cut_uvw_diff, :][:, cut_uvw_diff][cut_gmm_xyzuvw,
             :][:,
             cut_gmm_xyzuvw])
 
@@ -212,7 +222,7 @@ def remove_noise_sigma(data_full, cluster_bool_arr, te_obj,
             return None, None, None, False
 
         # Combine CCs data points with originally defined dense core (to not miss out on potentially dropped points)
-        cluster_indices = data_idx[cut_dense_neighs][cut_uvw_diff][cut_gmm_xyzuvw][
+        cluster_indices = data_idx[cluster_bool_arr][cut_uvw_diff][cut_gmm_xyzuvw][
             cc_idx == np.argmax(np.bincount(cc_idx))]
         cluster_member_arr[cluster_indices] += 1
 
@@ -223,11 +233,11 @@ def remove_noise_sigma(data_full, cluster_bool_arr, te_obj,
         'contamination': mean_contamination_fraction,
         'completeness': mean_completeness_fraction,
         'rho2fit': rho2fit,
-        'data2fit': data_idx[cut_dense_neighs][cut_uvw_diff]
+        'data2fit': data_idx[cluster_bool_arr][cut_uvw_diff]
     }
     rv_info = {
         'rv_computed': rv_computed,
-        'data_idx': data_idx[cut_dense_neighs]
+        'data_idx': data_idx[cluster_bool_arr]
     }
 
     # Prepare output
@@ -247,13 +257,13 @@ def remove_noise_simple(cluster_bool_arr, te_obj, adjacency_mtrx=None):
     """Remove noise with only gmms"""
     # ----- Part-I: extract dense core -------
     data_idx = np.arange(te_obj.X.shape[0])
-    # Get densest components in the given cluster
+    # Get most dense components in the given cluster
     _, cluster_labels, _, _, _, is_good_clustering = gmm_cut(te_obj.weights_[cluster_bool_arr], n_components=2)
     if not is_good_clustering:
         return None
     # get labels of local cluster mode containing the peak
     cluster_modes_dense = np.unique(te_obj.leaf_labels_[data_idx[cluster_bool_arr][cluster_labels]])
-    # Add neighbors of densest region that is in the cluster:
+    # Add neighbors of most dense regions that is in the cluster:
     search_for_peak = cluster_modes_dense
     for dense_cl in cluster_modes_dense:
         peak_neighbors = np.intersect1d(te_obj.leaf_labels_[cluster_bool_arr],

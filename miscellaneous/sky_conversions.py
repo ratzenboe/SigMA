@@ -1,14 +1,14 @@
-from astropy.coordinates import LSR, SkyCoord, Distance
+from astropy.coordinates import SkyCoord, Distance
 import astropy.units as u
 
 
 def fill_galactic(data):
-    skycoord = SkyCoord(ra = data['ra'].values * u.deg,
-                        dec = data['dec'].values * u.deg,
-                        distance = Distance(parallax=data['parallax'].values * u.mas),
-                        pm_ra_cosdec = data['pmra'].values * u.mas/u.yr,
-                        pm_dec = data['pmdec'].values * u.mas/u.yr,
-                        radial_velocity = data['radial_velocity'].values * u.km/u.s,
+    skycoord = SkyCoord(ra=data['ra'].values * u.deg,
+                        dec=data['dec'].values * u.deg,
+                        distance=Distance(parallax=data['parallax'].values * u.mas),
+                        pm_ra_cosdec=data['pmra'].values * u.mas/u.yr,
+                        pm_dec=data['pmdec'].values * u.mas/u.yr,
+                        radial_velocity=data['radial_velocity'].values * u.km/u.s,
                         frame='icrs')
 
     data['X'] = skycoord.galactic.cartesian.x.value

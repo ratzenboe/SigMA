@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from SigMA.Resampling import PerturbedData
 from SigMA.Parameters import ParameterClass
+from SigMA.hypothesis_test_utils import correct_pvals_benjamini_hochberg
 from collections import defaultdict
 from itertools import groupby
 
@@ -14,7 +15,9 @@ class SigMA(ParameterClass, PerturbedData):
                  nb_resampling: int = 20,
                  max_knn_density: int = 100,
                  beta: float = 0.99,
-                 knn_initcluster_graph: int = 70):
+                 knn_initcluster_graph: int = 70,
+                 hypothesis_test: str = 'cct',
+                 ):
         """High-level class applying the SigMA_v0 clustering analysis
         data: pandas data frame
         cluster_features: Features used in the clustering process
@@ -40,18 +43,43 @@ class SigMA(ParameterClass, PerturbedData):
             # GraphSkeleton
             knn_initcluster_graph=knn_initcluster_graph, beta=beta
         )
+        self.hypothesis_test = hypothesis_test
         # Resampling info
         self.nb_resampling = nb_resampling
         if nb_resampling > 0:
             self.build_covariance_matrix()
             print('Creating k-d trees of resampled data sets...')
-            self.resampled_kdtrees = [self.create_kdtree() for i in range(self.nb_resampling)]
+            self.resampled_kdtrees = [self.create_kdtree() for _ in range(self.nb_resampling)]
 
         # Saddle point information
         self.saddle_dknn = defaultdict(frozenset)
         self.cluster_saddle_points = defaultdict(frozenset)
         self.saddles_per_modes_density = None
         self.mode_neighbor_dict = None
+
+    def set_scaling_factors(self, scale_factors: dict):
+        """Change scale factors and re-initialize clustering"""
+        if self.scale_factors == scale_factors:
+            return
+
+        # Update data and kd-tree
+        self.update_scaling_factors(scale_factors=scale_factors)
+        # Compute updated densities
+        self.distances = self.calc_distances()
+        # Update resampled data
+        print('Creating k-d trees of resampled data sets...')
+        if self.nb_resampling > 0:
+            self.resampled_kdtrees = [self.create_kdtree() for _ in range(self.nb_resampling)]
+        # Reset saddle point information
+        self.saddle_dknn = defaultdict(frozenset)
+        self.cluster_saddle_points = defaultdict(frozenset)
+        self.saddles_per_modes_density = None
+        self.mode_neighbor_dict = None
+        # Reset cluster information (See Parameters class)
+        self.knn = None
+        # Setup Graph skeleton
+        self.setup()
+        return
 
     def initialize_mode_neighbor_dict(self):
         edges = []
@@ -70,7 +98,8 @@ class SigMA(ParameterClass, PerturbedData):
             self.initialize_clustering(knn=knn)
         return
 
-    def fit(self, alpha: float, knn: int = None, hypotest='hmp', saddle_point_candidate_threshold: int = 20):
+    def run_sigma(self, alpha: float, knn: int = None,
+            hypotest: str = 'cct', return_pvalues: bool = False, saddle_point_candidate_threshold: int = 50):
         """
         :param alpha: significance level
         :param knn: knn density estimation parameter
@@ -85,14 +114,34 @@ class SigMA(ParameterClass, PerturbedData):
             # Compute k-distances for re-sampled data sets
             self.resample_k_distances()
 
-        labels = self.merge_clusters(knn=knn, alpha=alpha, hypotest=hypotest)
+        if self.is_single_cluster:
+            if return_pvalues:
+                return np.zeros(self.X.shape[0], dtype=int), -1
+            return np.zeros(self.X.shape[0], dtype=int)
+
+        labels, pvalues = self.merge_clusters(knn=knn, alpha=alpha, hypotest=hypotest)
+        if return_pvalues:
+            return labels, pvalues
         return labels
+
+    def fit(self, alpha: float, knn: int = None, bh_correction: bool = False):
+        """Simple sklearn like interface"""
+        if self.is_single_cluster:
+            return np.zeros(self.X.shape[0], dtype=int)
+
+        if bh_correction:
+            labels, p_values = self.run_sigma(alpha=-np.inf, knn=knn, return_pvalues=True)
+            # Minimum p-value is 0.05
+            alpha = min(0.05, correct_pvals_benjamini_hochberg(pvals=p_values, alpha=alpha))
+
+            print(f'Updated significance threshold: {alpha:.4f}')
+        return self.run_sigma(alpha=alpha, knn=knn)
 
     def resample_k_distances(self):
         # Loop through all trees and compute k-distances on resampled data sets
         for kd_tree_i in self.resampled_kdtrees:
             mode_list = np.array(list(self.mode_kdist.keys()))
-            dists, _ = kd_tree_i.query(self.X[mode_list], k=self.knn + 1, n_jobs=-1)
+            dists, _ = kd_tree_i.query(self.X[mode_list], k=self.knn + 1, workers=-1)
             kdist_modes = np.max(dists, axis=1)
             # ------- Modes ----------
             # add distances to mode list
@@ -100,7 +149,7 @@ class SigMA(ParameterClass, PerturbedData):
                 self.mode_kdist[mode_i].append(kdist_i)
             # ------- Saddles --------
             all_saddle_points = self.saddle_point_positions()
-            dists, _ = kd_tree_i.query(all_saddle_points, k=self.knn + 1, n_jobs=-1)
+            dists, _ = kd_tree_i.query(all_saddle_points, k=self.knn + 1, workers=-1)
             kdist_saddles = np.max(dists, axis=1)
             for (saddle_kdist_list, _), kdist_i in zip(self.saddle_dknn.values(), kdist_saddles):
                 saddle_kdist_list.append(kdist_i)

@@ -27,18 +27,18 @@ class MockData:
             # Randomly selects half of the stars to compute the mean with
             cut_compute_mean = np.random.random(nb_stars) < 0.5
             mean_info_ul = {col: m for m, col in zip(
-                np.mean(data.loc[cut, all_axes].values[cut_compute_mean], axis=0), all_axes
+                np.nanmean(data.loc[cut, all_axes].values[cut_compute_mean], axis=0), all_axes
             )}
             mock_info[ul] = mean_info_ul
             mock_info[ul]['nb_stars'] = nb_stars
             # Compute mean (!) absolute deviation in UVW space (to scale proper motions later)
             diff = (data.loc[cut, self.vel_axes] - data.loc[cut, self.vel_axes].mean()).values
             diff = np.linalg.norm(diff, axis=1)
-            mock_info[ul]['mad_vel'] = np.mean(diff)
+            mock_info[ul]['mad_vel'] = np.nanmedian(diff) / 2
             # Same in XYZ space
             diff = (data.loc[cut, self.pos_axes] - data.loc[cut, self.pos_axes].mean()).values
             diff = np.linalg.norm(diff, axis=1)
-            mock_info[ul]['mad_pos'] = np.mean(diff)
+            mock_info[ul]['mad_pos'] = np.nanmean(diff)
         return mock_info
 
     def randomize_star_count(self, mock_sizes, min_members=30):
@@ -85,7 +85,7 @@ class MockData:
             # Compute MAP in pm space
             diff = (mock_cluster[vel_axes] - mock_cluster[vel_axes].mean()).values
             diff = np.linalg.norm(diff, axis=1)
-            mad_pm = np.median(diff)
+            mad_pm = np.nanmedian(diff)
             # Get random value around orginal value (5% variance)
             mad_orig = np.random.normal(scocen_info['mad_vel'], scocen_info['mad_vel'] * rel_var, 1)[0]
             # Scale proper motion axes
@@ -94,7 +94,7 @@ class MockData:
             # Compute MAP in XYZ space
             diff = (mock_cluster[pos_axes] - mock_cluster[pos_axes].mean()).values
             diff = np.linalg.norm(diff, axis=1)
-            mad_xyz = np.median(diff)
+            mad_xyz = np.nanmedian(diff)
             # Get random value around orginal value (5% variance)
             mad_orig = np.random.normal(scocen_info['mad_pos'], scocen_info['mad_pos'] * rel_var, 1)[0]
             # Scale proper motion axes

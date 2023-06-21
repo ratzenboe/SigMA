@@ -15,7 +15,8 @@ def prepare_data(fname):
     # Define column names (following Gaia data guidelines)
     error_features = [
         'ra', 'dec', 'parallax', 'pmra', 'pmdec',
-        'ra_error', 'dec_error', 'parallax_error', 'pmra_error', 'pmdec_error']
+        'ra_error', 'dec_error', 'parallax_error', 'pmra_error', 'pmdec_error'
+    ]
     # Correlations
     correlations_features = [
         'ra_dec_corr', 'ra_parallax_corr', 'ra_pmra_corr', 'ra_pmdec_corr',

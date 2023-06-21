@@ -25,7 +25,7 @@ def running_median(X, Y, total_bins=20, range_calc_median=None):
 
 
 def overlap(a, b):
-    "Computes the overlap between the ranges of a and b"
+    """Computes the overlap between the ranges of a and b"""
     err_msg = 'The inputs "a" and "b" have to be a list/tuple of length 2.'
     if not isinstance(a, (tuple, set, list)) or not isinstance(a, (tuple, set, list)):
         raise TypeError(err_msg)

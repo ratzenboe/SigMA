@@ -1,6 +1,7 @@
 import numpy as np
 from SigMA.DataLayer import DataLayer
 from scipy.spatial import cKDTree
+from sklearn.neighbors import NearestNeighbors
 
 
 class DensityEstimator(DataLayer):
@@ -15,8 +16,12 @@ class DensityEstimator(DataLayer):
     def calc_distances(self):
         dists = None
         if (self.data is not None) and (self.max_knn_density is not None):
-            dists, _ = self.kd_tree.query(self.X, k=self.max_knn_density+1, n_jobs=-1)
-            dists = np.sort(dists[:, 1:], axis=1)
+            # dists, _ = self.kd_tree.query(self.X, k=self.max_knn_density+1, workers=-1)
+            # dists = np.sort(dists[:, 1:], axis=1)
+            dists, _ = self.kd_tree.kneighbors(
+                self.X, n_neighbors=self.max_knn_density,
+                return_distance=True,
+            )
         return dists
 
     def knn_density(self, k_neighbors: int):
@@ -29,20 +34,26 @@ class DensityEstimator(DataLayer):
 
 
 class DensityEstKNN:
-    def __init__(self, X: np.ndarray = None, max_neighbors: int = None):
+    def __init__(self, X: np.ndarray = None, max_neighbors: int = None, metric_params: dict = dict()):
         """Class calculating densities on given data X
         max_neighbors: maximal neighbors to consider in knn density estimation
         """
         self.data = X
         self.max_neighbors = max_neighbors
-        self.kd_tree = cKDTree(data=X)
+        # self.kd_tree = cKDTree(data=X)
+        # Need NeareatNeighbors for Mahalanobis distance (not implemented in cKDTree)
+        self.kd_tree = NearestNeighbors(n_jobs=-1, **metric_params).fit(X)
         self.distances = self.calc_distances()
 
     def calc_distances(self):
         dists = None
         if (self.data is not None) and (self.max_neighbors is not None):
-            dists, _ = self.kd_tree.query(self.data, k=self.max_neighbors+1, n_jobs=-1)
-            dists = np.sort(dists[:, 1:], axis=1)
+            # dists, _ = self.kd_tree.query(self.data, k=self.max_neighbors+1, workers=-1)
+            # dists = np.sort(dists[:, 1:], axis=1)
+            dists, _ = self.kd_tree.kneighbors(
+                self.data, n_neighbors=self.max_neighbors,
+                return_distance=True,
+            )
         return dists
 
     def knn_density(self, k_neighbors: int):

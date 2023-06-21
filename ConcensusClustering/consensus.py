@@ -25,6 +25,7 @@ class ClusterConsensus:
         self.transform_labels()
         # --- Graph connecting clustering solutions via Jaccard similarity ---
         self.G = nx.Graph()
+        self.build_graph()
         # --- Minimum spanning tree
         self.T = None
 
@@ -190,7 +191,12 @@ class ClusterConsensus:
         mode_decision, _ = mode(self.labels, axis=0)
         spurious = [1]
         while len(spurious) > 0:
-            labels_cliques = np.argmax(voting_arr, axis=0)
+            try:
+                labels_cliques = np.argmax(voting_arr, axis=0)
+            except ValueError:
+                # We break array here if no -1 samples are found
+                spurious = []
+                break
             # Set bg to -1 (by majority voting)
             if len(mode_decision[0] == -1) > 0:
                 labels_cliques[mode_decision[0] == -1] = -1
@@ -201,7 +207,6 @@ class ClusterConsensus:
             else:
                 # We break array here if no -1 samples are found
                 spurious = []
-
+        # Remove spurious clusters
         labels_cliques[np.isin(labels_cliques, spurious)] = -1
-
         return labels_cliques

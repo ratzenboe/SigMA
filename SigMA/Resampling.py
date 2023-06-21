@@ -61,7 +61,7 @@ class PerturbedData(DataLayer):
         # add small pertubation to covariance matrix, because its eigenvalues can decay
         # very rapidly and without this stabilization the Cholesky decomposition fails
         self.L[:, diag, diag] += epsilon
-        #  Cholesky decomposition.
+        #  Cholesky decomposition:
         for k in range(nb_points):
             # set i'th element to Cholensky decomposition of covariance matrix
             self.L[k, :, :] = np.linalg.cholesky(self.L[k, :, :])

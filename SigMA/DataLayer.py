@@ -6,7 +6,7 @@ from sklearn.neighbors import NearestNeighbors
 
 class DataLayer:
     def __init__(self,
-                 data: pd.DataFrame, cluster_features: list, scale_factors: dict, metric_params: dict = dict(),
+                 data: pd.DataFrame, cluster_features: list, scale_factors: dict = None, metric_params: dict = dict(),
                  **kwargs):
         """Class calculating densities on given data X
         data: pandas data frame containing all necessary columns
@@ -40,8 +40,9 @@ class DataLayer:
 
     def init_cluster_data(self):
         X = copy.deepcopy(self.data[self.cluster_columns])
-        for scale_info in self.scale_factors.values():
-            cols = scale_info['features']
-            sf = scale_info['factor']
-            X[cols] *= sf
+        if self.scale_factors is not None:
+            for scale_info in self.scale_factors.values():
+                cols = scale_info['features']
+                sf = scale_info['factor']
+                X[cols] *= sf
         return X.values

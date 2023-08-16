@@ -7,16 +7,18 @@ from collections import defaultdict
 from itertools import groupby
 
 
+# TODO: PerturbedData class not working yet with metric_params (new kd_tree)
 class SigMA(ParameterClass, PerturbedData):
     def __init__(self,
                  data: pd.DataFrame,
                  cluster_features: list,
-                 scale_factors: dict,
+                 scale_factors: dict = None,
                  nb_resampling: int = 20,
                  max_knn_density: int = 100,
                  beta: float = 0.99,
                  knn_initcluster_graph: int = 70,
                  hypothesis_test: str = 'cct',
+                 metric_params: dict = dict(),
                  ):
         """High-level class applying the SigMA_v0 clustering analysis
         data: pandas data frame
@@ -39,7 +41,7 @@ class SigMA(ParameterClass, PerturbedData):
             # DataLayer class attributes
             data=data, cluster_features=cluster_features, scale_factors=scale_factors,
             # DensityEstimator
-            max_knn_density=max_knn_density,
+            max_knn_density=max_knn_density, metric_params=metric_params,
             # GraphSkeleton
             knn_initcluster_graph=knn_initcluster_graph, beta=beta
         )

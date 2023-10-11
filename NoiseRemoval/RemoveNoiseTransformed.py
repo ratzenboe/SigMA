@@ -107,9 +107,9 @@ def rn_obtain_data(
                                               'data_idx': data_idx[cut_dense_neighs]}, True
 
 
-def remove_noise_quick_n_dirty(data_density, cluster_bool_arr):
+def remove_noise_quick_n_dirty(data_density, cluster_bool_arr, n_components=2):
     # --- (a) Get densest components of overall mixture of cluster and BG ---
-    _, cluster_labels, _, _, _, is_good_clustering = gmm_cut(data_density[cluster_bool_arr], n_components=2)
+    _, cluster_labels, _, _, _, is_good_clustering = gmm_cut(data_density[cluster_bool_arr], n_components=n_components)
     if not is_good_clustering:
         return None, False
     return cluster_labels, True
@@ -283,5 +283,35 @@ def remove_noise_simple(cluster_bool_arr, te_obj, adjacency_mtrx=None):
 
     _, cc_idx = connected_components(adjacency_mtrx[cut_dense_core, :][:, cut_dense_core])
     # Combine CCs data points with originally defined dense core (to not miss out on potentially dropped points)
-    cluster_indices = data_idx[cut_dense_neighs][cluster_labels_filter][cc_idx == np.argmax(np.bincount(cc_idx))]
-    return np.isin(data_idx, cluster_indices)
+    try:
+        cluster_indices = data_idx[cut_dense_neighs][cluster_labels_filter][cc_idx == np.argmax(np.bincount(cc_idx))]
+        return np.isin(data_idx, cluster_indices)
+    except ValueError:
+        return None
+
+
+def remove_noise_gmm(cluster_bool_arr, te_obj, adjacency_mtrx=None, n_components='auto'):
+    """Remove noise with only gmms"""
+    # ----- Part-I: extract dense core -------
+    data_idx = np.arange(te_obj.X.shape[0])
+    # Get most dense components in the given cluster
+    _, cluster_labels, _, _, _, is_good_clustering = gmm_cut(
+        te_obj.weights_[cluster_bool_arr],
+        n_components=n_components
+    )
+    if not is_good_clustering:
+        return None
+    # Dense core points
+    cut_dense_core = np.isin(data_idx, data_idx[cluster_bool_arr][cluster_labels])
+    # Get dense component of peak
+    if adjacency_mtrx is None:
+        adjacency_mtrx = te_obj.A
+    _, cc_idx = connected_components(adjacency_mtrx[cut_dense_core, :][:, cut_dense_core])
+    # Combine CCs data points with originally defined dense core (to not miss out on potentially dropped points)
+    try:
+        cluster_indices = data_idx[cluster_bool_arr][cluster_labels][cc_idx == np.argmax(np.bincount(cc_idx))]
+        return np.isin(data_idx, cluster_indices)
+    except ValueError:
+        return None
+
+

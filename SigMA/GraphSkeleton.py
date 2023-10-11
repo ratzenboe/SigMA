@@ -29,13 +29,15 @@ class GraphSkeleton(DensityEstimator):
     def setup(self):
         # If metric_params are given, we build the graph with the given metric
         if self.metric_params:
-            self.A = kneighbors_graph(self.X, self.knn_initcluster_graph, **self.metric_params)
+            # Should be passed in the following way:
+            # metric_params = dict(metric='mahalanobis', metric_params={'V': np.cov(X_cluster.T)}, **other_kwargs)
+            self.A = kneighbors_graph(self.X, self.knn_initcluster_graph, n_jobs=-1, **self.metric_params)
         # If beta is given, we build the beta skeleton
         elif isinstance(self.beta, (float, int)):
             self.A = self.beta_adjacency(max_neighbors=self.knn_initcluster_graph, beta=self.beta)
             # self.A = self.remove_edges()
         else:
-            self.A = kneighbors_graph(self.X, self.knn_initcluster_graph)
+            self.A = kneighbors_graph(self.X, self.knn_initcluster_graph, n_jobs=-1)
 
     def beta_adjacency(self, max_neighbors: int, beta: float):
         # Build beta skeleton

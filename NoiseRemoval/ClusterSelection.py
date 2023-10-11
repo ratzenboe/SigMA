@@ -24,7 +24,7 @@ def maximize_ch_score(nearest_neighbors_arr):
     nna_argsort = np.argsort(nna_medians)
     # --- loop through clusters by decreasing median density (increasing distance) ---
     scores = []
-    index = np.arange(3, nna_argsort.size)  # Start with 3 clusters minimum
+    index = np.arange(1, nna_argsort.size)  # Start with 1 cluster minimum
     for i in index:
         group_good = np.concatenate([nearest_neighbors_arr[j] for j in nna_argsort[:i]])
         group_bad = np.concatenate([nearest_neighbors_arr[j] for j in nna_argsort[i:]])
@@ -36,6 +36,8 @@ def maximize_ch_score(nearest_neighbors_arr):
 
 def remove_outlier_clusters(clustering_res, nearest_neighbors_arr, save_as_new_cluster=False):
     """Remove clusters based on density histogram comparisons with other clusters"""
+    if np.unique(clustering_res[clustering_res > -1]).size <= 2:
+        return clustering_res, None
     cr = copy.deepcopy(clustering_res)
     # Get maximal CH score
     index, scores, nna_medians, nna_argsort = maximize_ch_score(nearest_neighbors_arr)
@@ -72,4 +74,3 @@ def remove_outlier_by_nn_threshold(clustering_res, nearest_neighbors_arr, nn_med
         new_cluster_nb = -1
     cr[np.isin(clustering_res, bad_cluster_ids)] = new_cluster_nb
     return cr
-

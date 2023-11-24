@@ -1,5 +1,9 @@
 from SigMA.GraphSkeleton import GraphSkeleton
-from SigMA.hypothesis_test_utils import global_pvalue_hmp, global_pvalue_fisher, cauchy_combination_test
+from SigMA.hypothesis_test_utils import (
+    global_pvalue_hmp,
+    global_pvalue_fisher,
+    cauchy_combination_test,
+)
 from collections import defaultdict
 from scipy.stats import norm
 from math import erf, sqrt
@@ -53,7 +57,9 @@ def loop_data(threshold, num_pts, p, knn, distances, weights_, A_indices, A_idx_
     parents = -np.ones(num_pts, dtype=np.int32)
     # Prepare density: sort indices by density
     sorted_idxs = np.flip(np.argsort(weights_))
-    inv_sorted_idxs = np.arange(num_pts)  # Mapping from index to density rank; lower index -> higher density
+    inv_sorted_idxs = np.arange(
+        num_pts
+    )  # Mapping from index to density rank; lower index -> higher density
     for i in range(num_pts):
         inv_sorted_idxs[sorted_idxs[i]] = i
     # Store persistence and saddle point
@@ -62,7 +68,7 @@ def loop_data(threshold, num_pts, p, knn, distances, weights_, A_indices, A_idx_
     # Start Mode finding
     for i in range(num_pts):
         current_pt = sorted_idxs[i]  # loop through points in decreasing density fashion
-        neighbors = A_indices[A_idx_ptr[current_pt]:A_idx_ptr[current_pt + 1]]
+        neighbors = A_indices[A_idx_ptr[current_pt] : A_idx_ptr[current_pt + 1]]
         # Neighbors with higher density:
         higher_neighbors = [n for n in neighbors if inv_sorted_idxs[n] <= i]
         if len(higher_neighbors) == 0:
@@ -70,7 +76,9 @@ def loop_data(threshold, num_pts, p, knn, distances, weights_, A_indices, A_idx_
             parents[current_pt] = current_pt  # in this case, a point is it's own parent
         else:  # if a point has neighbors with higher densities
             # attribute point to neighbor with highest density (weight_ is inversely proportional to k-distance)
-            g = higher_neighbors[np.argmax(weights_[np.array(higher_neighbors)])]  # highest density neighbor
+            g = higher_neighbors[
+                np.argmax(weights_[np.array(higher_neighbors)])
+            ]  # highest density neighbor
             pg = uf_find(g, parents)  # parent = respective modal point of cluster
             parents[current_pt] = pg  # add mode point to points info
 
@@ -84,7 +92,11 @@ def loop_data(threshold, num_pts, p, knn, distances, weights_, A_indices, A_idx_
                     # Calculate saddle point density
                     val = max(distances[pg], distances[pn])
                     # p * np.sqrt(k / 2) * (np.log(d_saddle) - np.log(d_max))
-                    pers_curr = p * np.sqrt(knn / 2) * (np.log(distances[current_pt]) - np.log(val))
+                    pers_curr = (
+                        p
+                        * np.sqrt(knn / 2)
+                        * (np.log(distances[current_pt]) - np.log(val))
+                    )
                     if pers_curr < threshold:
                         persistence.append(pers_curr)
                         uf_union(pg, pn, parents, weights_)
@@ -99,16 +111,18 @@ class ParameterClass(GraphSkeleton):
         :param max_neighbors: Maximal number of k to consider for density estimation
         """
         super().__init__(**kwargs)
-        self.knn = None             # Density estimation parameter
-        self.dists_to_knn = None    # k-distance; used in p-value computation
-        self.weights_ = None        # Estimated density value (not normalized)
-        self.n_leaves_ = None       # Number of modes founds in gradient ascend
-        self.leaf_labels_ = None    # Mode labels
-        self.saddle_dknn = defaultdict(frozenset)   # Saddle point information
-        self.mode_kdist = None                      # K-distance of modes (need for resampling)
-        self.is_single_cluster = False              # Flag for single cluster case
+        self.knn = None  # Density estimation parameter
+        self.dists_to_knn = None  # k-distance; used in p-value computation
+        self.weights_ = None  # Estimated density value (not normalized)
+        self.n_leaves_ = None  # Number of modes founds in gradient ascend
+        self.leaf_labels_ = None  # Mode labels
+        self.saddle_dknn = defaultdict(frozenset)  # Saddle point information
+        self.mode_kdist = None  # K-distance of modes (need for resampling)
+        self.is_single_cluster = False  # Flag for single cluster case
 
-    def initialize_clustering(self, knn: int, saddle_point_candidate_threshold: int = 20):
+    def initialize_clustering(
+        self, knn: int, saddle_point_candidate_threshold: int = 20
+    ):
         # Fill information
         self.knn = knn
         # As alpha is 1, all initial clusters are kept separate, i.e., all saddle points are recovered
@@ -120,16 +134,20 @@ class ParameterClass(GraphSkeleton):
             self.is_single_cluster = True
         else:
             # Determine saddle point
-            self.saddle_dknn = self.determine_saddle_points(saddle_points, knn, saddle_point_candidate_threshold)
+            self.saddle_dknn = self.determine_saddle_points(
+                saddle_points, knn, saddle_point_candidate_threshold
+            )
             self.is_single_cluster = False
         self.leaf_labels_ = labels
         self.n_leaves_ = n_leaves_
-        self.mode_kdist = {m: [self.dists_to_knn[m]] for m in np.unique(self.leaf_labels_)}
-        return
+        self.mode_kdist = {
+            m: [self.dists_to_knn[m]] for m in np.unique(self.leaf_labels_)
+        }
+        return self
 
     @staticmethod
     def postprocessing_saddle_points(saddle_points, threshold: int = 40):
-        """ Counts the saddle point candidates --> shouldn't be more than threshold
+        """Counts the saddle point candidates --> shouldn't be more than threshold
         :param saddle_points: All saddle point candidates
         :param threshold: Number of saddle point candidates we save;
             the true saddle point is in 99.4% of all cases within the first 20 candidates
@@ -150,28 +168,30 @@ class ParameterClass(GraphSkeleton):
             saddle_point_modes[frozenset({pg, pn})] += 1
         return saddle_points_reduced
 
-    def determine_saddle_points(self, saddle_point_candidates, knn, saddle_point_candidate_threshold):
+    def determine_saddle_points(
+        self, saddle_point_candidates, knn, saddle_point_candidate_threshold
+    ):
         # Remove unlikely saddle point candidates
         saddle_point_candidates = self.postprocessing_saddle_points(
             saddle_points=saddle_point_candidates,
-            threshold=saddle_point_candidate_threshold
+            threshold=saddle_point_candidate_threshold,
         )
         pg, pn, current_pt, neighbor = np.array(saddle_point_candidates).T
         # Get midpoints of connecting edge
         midpts = (self.X[current_pt] + self.X[neighbor]) * 0.5
         # Get distances to midpoints
-        # dists_midpoints, _ = self.kd_tree.query(midpts, k=knn + 1, workers=-1)
-        dists_midpoints, _ = self.kd_tree.kneighbors(
-            midpts, n_neighbors=knn,
-            return_distance=True,
-        )
+        dists_midpoints, _ = self.kd_tree.query(midpts, k=knn + 1, workers=-1)
         dknn_midpoint = np.max(dists_midpoints, axis=1)
         # Distances to knn of current_pt and neighor
         currpt_dists = self.dists_to_knn[current_pt]
         neigbr_dists = self.dists_to_knn[neighbor]
         # Decision for saddle point between midpoint, and both edges -->
-        saddle_currpt_neighb_arr = np.vstack([dknn_midpoint, currpt_dists, neigbr_dists]).T
-        dist_argmax = np.argmax(saddle_currpt_neighb_arr, axis=1)  # maximum distance == minimum density
+        saddle_currpt_neighb_arr = np.vstack(
+            [dknn_midpoint, currpt_dists, neigbr_dists]
+        ).T
+        dist_argmax = np.argmax(
+            saddle_currpt_neighb_arr, axis=1
+        )  # maximum distance == minimum density
         # Determine saddle point
         save_dict = defaultdict(frozenset)
         for i, (pg_i, pn_i, argmax_dist_i) in enumerate(zip(pg, pn, dist_argmax)):
@@ -187,7 +207,10 @@ class ParameterClass(GraphSkeleton):
                 else:
                     saddle_point_position = self.X[current_pt[i]]
                 # Saves information on the k-distance and the position of the saddle point
-                save_dict[frozenset({pg_i, pn_i})] = (curr_saddle_kdist, saddle_point_position)
+                save_dict[frozenset({pg_i, pn_i})] = (
+                    curr_saddle_kdist,
+                    saddle_point_position,
+                )
             else:
                 # Entry already exists: we need to compare the densities of the given saddle points
                 # Saddle point: Maximum density point of all these saddle candidates, i.e., minimum k-distance
@@ -200,9 +223,15 @@ class ParameterClass(GraphSkeleton):
                     else:
                         saddle_point_position = self.X[current_pt[i]]
                     # Save "better" saddle point candidate
-                    save_dict[frozenset({pg_i, pn_i})] = (curr_saddle_kdist, saddle_point_position)
+                    save_dict[frozenset({pg_i, pn_i})] = (
+                        curr_saddle_kdist,
+                        saddle_point_position,
+                    )
         # Sort dictionary by density of saddle point --> from densest (minimum distance) to the least dense one
-        sd_aslist = [(pg, pn, saddle_kdist, saddle_pos) for (pg, pn), (saddle_kdist, saddle_pos) in save_dict.items()]
+        sd_aslist = [
+            (pg, pn, saddle_kdist, saddle_pos)
+            for (pg, pn), (saddle_kdist, saddle_pos) in save_dict.items()
+        ]
         sd_aslist = sorted(sd_aslist, key=lambda x: x[2])
         # Transform list back to dictionary
         save_dict = defaultdict(frozenset)
@@ -216,7 +245,7 @@ class ParameterClass(GraphSkeleton):
         :param knn: knn density estimation parameter
         :param alpha: significance level
         """
-        print(f'Performing gradient ascend using a {knn}-NN density estimation.')
+        print(f"Performing gradient ascend using a {knn}-NN density estimation.")
         # --- Start fitting proceduce ---
         num_pts, p = self.X.shape
         # Calculate density
@@ -234,7 +263,7 @@ class ParameterClass(GraphSkeleton):
             self.dists_to_knn,
             self.weights_,
             self.A.indices,
-            self.A.indptr
+            self.A.indptr,
         )
         # post-process label information
         # labels_ = LabelEncoder().fit_transform(labels)
@@ -250,17 +279,19 @@ class ParameterClass(GraphSkeleton):
             all_saddle_points.append(saddle_position)
         return np.array(all_saddle_points)
 
-    def merge_clusters(self, knn, alpha, hypotest='cct'):
+    def merge_clusters(self, knn, alpha, hypotest="cct"):
         # Determine global hypothesis test function
-        if hypotest.lower() == 'hmp':
+        if hypotest.lower() == "hmp":
             hp_function = global_pvalue_hmp
-        elif hypotest.lower() == 'fisher':
+        elif hypotest.lower() == "fisher":
             hp_function = global_pvalue_fisher
         else:
             hp_function = cauchy_combination_test
 
         # prepare parameters for fitting
-        parents = copy.deepcopy(self.leaf_labels_)  # parents get modified --> need a copy
+        parents = copy.deepcopy(
+            self.leaf_labels_
+        )  # parents get modified --> need a copy
         densities = self.knn_density(knn)
         num_pts, p = self.X.shape
         # Save pvalues
@@ -274,12 +305,16 @@ class ParameterClass(GraphSkeleton):
                 # --------- Extract list of k-distances of modes and saddle points --------
                 pg_kdist_list = self.mode_kdist[pg]
                 pn_kdist_list = self.mode_kdist[pn]
-                p_values = []   # Store p values of individual tests
+                p_values = []  # Store p values of individual tests
                 # TODO: vectorize following loop
-                for pg_kdist, pn_kdist, saddle_kdist in zip(pg_kdist_list, pn_kdist_list, saddle_kdist_list):
+                for pg_kdist, pn_kdist, saddle_kdist in zip(
+                    pg_kdist_list, pn_kdist_list, saddle_kdist_list
+                ):
                     val = max(pg_kdist, pn_kdist)
                     # p * np.sqrt(k / 2) * (np.log(d_saddle) - np.log(d_max))
-                    SB_alpha = p * np.sqrt(knn / 2) * (np.log(saddle_kdist) - np.log(val))
+                    SB_alpha = (
+                        p * np.sqrt(knn / 2) * (np.log(saddle_kdist) - np.log(val))
+                    )
                     # pval_curr = 1 - norm.cdf(SB_alpha)
                     # 0.78 is the empirically determined standard deviation of Gais 5D phase space data
                     pval_curr = 1 - phi(SB_alpha, 0.78)

@@ -1,6 +1,7 @@
 from scipy.optimize import minimize
 import numpy as np
 from numba import jit
+from scipy import stats
 
 # ----- GLOBAL CONSTANTS -----
 # k: Astronomical unit expressed in km.yr/sec
@@ -39,12 +40,29 @@ def prepare_inverse_transformation(ra, dec):
         A = np.ndarray((3, 3), buffer=buffer)
         iA_f[i] = np.linalg.inv(A)
 
+    # Following code might be faster than the above
+    # A_matrix = np.zeros((ra.shape[0], 3, 3))
+    # cos_ra = np.cos(np.radians(ra))
+    # cos_dec = np.cos(np.radians(dec))
+    # sin_ra = np.sin(np.radians(ra))
+    # sin_dec = np.sin(np.radians(dec))
+    # A_matrix[:, 0, 0] = cos_ra * cos_dec
+    # A_matrix[:, 1, 0] = sin_ra * cos_dec
+    # A_matrix[:, 2, 0] = sin_dec
+    # A_matrix[:, 0, 1] = -sin_ra
+    # A_matrix[:, 1, 1] = cos_ra
+    # A_matrix[:, 0, 2] = -cos_ra * sin_dec
+    # A_matrix[:, 1, 2] = -sin_ra * sin_dec
+    # A_matrix[:, 2, 2] = cos_dec
+    #
+    # invert_matrix = lambda matrix: np.linalg.inv(matrix.reshape(3, 3))
+    # # Apply the function along the first axis (axis=0)
+    # iA_f = np.apply_along_axis(invert_matrix, axis=0, arr=A_matrix)
+
     return iT, iA_f
 
 
-def transform_inverse(
-    vel3d, iT, iA_f, plx, pmra, pmdec, rv, pmra_err, pmdec_err, rv_err
-):
+def lss(vel3d, iT, iA_f, plx, pmra, pmdec, rv, pmra_err, pmdec_err, rv_err):
     # Calculate inverse matrix for each point on sky
     iV_f = np.empty(shape=(plx.shape[0], 3))
     for i, iA in enumerate(iA_f):
@@ -64,8 +82,8 @@ def transform_inverse(
     # difference in pmra and dec
     # pmra_diff = (pmra - pmra_calc) ** 2
     # pmdec_diff = (pmdec - pmdec_calc) ** 2
-    pmra_diff = (pmra - pmra_calc) ** 2 / pmra_err**2
-    pmdec_diff = (pmdec - pmdec_calc) ** 2 / pmra_err**2
+    pmra_diff = (pmra - pmra_calc) ** 2  # / pmra_err**2
+    pmdec_diff = (pmdec - pmdec_calc) ** 2  # / pmdec_err**2
     sum_diffs = pmra_diff + pmdec_diff + rv_diff
     sum_diffs = sum_diffs[~np.isnan(sum_diffs)]
     return np.mean(sum_diffs)  # , radial_velocity_calc
@@ -84,6 +102,26 @@ def transform_inverse_propermotions(vel3d, ra, dec, plx):
     return pmra_calc, pmdec_calc, radial_velocity_calc
 
 
+def ll_computation(vel3d, iT, iA_f, plx, pmra, pmdec, rv, pmra_err, pmdec_err, rv_err):
+    # Calculate inverse matrix for each point on sky
+    iV_f = np.empty(shape=(plx.shape[0], 3))
+    for i, iA in enumerate(iA_f):
+        iV_f[i] = iA @ iT @ vel3d
+    # Above could be sped up by using einsum
+    # iV_f = np.einsum('ijk,ik->ij', iA_f, iT @ vel3d)
+
+    # Transformed 3d velocities
+    radial_velocity_calc = iV_f[:, 0]
+    pmra_calc = (iV_f[:, 1] * plx) / k
+    pmdec_calc = (iV_f[:, 2] * plx) / k
+
+    # Compute log likelihoods
+    ll_rv = stats.t.logpdf(x=radial_velocity_calc, df=1, loc=rv, scale=rv_err)
+    ll_pmra = stats.t.logpdf(x=pmra_calc, df=1, loc=pmra, scale=pmra_err)
+    ll_pmdec = stats.t.logpdf(x=pmdec_calc, df=1, loc=pmdec, scale=pmdec_err)
+    return -np.sum(ll_pmra + ll_pmdec + ll_rv)
+
+
 def optimize_velocity(
     ra,
     dec,
@@ -95,20 +133,23 @@ def optimize_velocity(
     pmdec_err,
     rv_err,
     init_guess=np.zeros(3),
-    do_minimize=True,
+    method="BFGS",
+    fun_type="lss",
 ):
     """Find velocity that best describes the data"""
-    iT, iA_f = prepare_inverse_transformation(ra, dec)
-    if do_minimize:
-        return minimize(
-            fun=transform_inverse,
-            x0=init_guess,
-            args=(iT, iA_f, plx, pmra, pmdec, rv, pmra_err, pmdec_err, rv_err),
-        )
+    if fun_type == "lss":
+        fun = lss
     else:
-        return transform_inverse(
-            init_guess, iT, iA_f, plx, pmra, pmdec, rv, pmra_err, pmdec_err, rv_err
-        )
+        fun = ll_computation
+
+    iT, iA_f = prepare_inverse_transformation(ra, dec)
+    # Minimize
+    return minimize(
+        fun=fun,
+        x0=init_guess,
+        method=method,
+        args=(iT, iA_f, plx, pmra, pmdec, rv, pmra_err, pmdec_err, rv_err),
+    )
 
 
 def prepare_transformation(ra, dec):

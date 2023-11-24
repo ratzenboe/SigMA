@@ -92,8 +92,6 @@ def equatorial_UVW(
     output (U,V,W): Tuple containing Space velocities UVW (kilometers per second)
     output (U,V,W,EU,EV,EW): Tuple containing Space velocities UVW and their measurement errors, used if any measurement errors are given as inputs (kilometers per second)
     """
-    # Verify keywords
-    num_stars = np.size(ra)
     # Compute elements of the T matrix
     cos_ra = np.cos(np.radians(ra))
     cos_dec = np.cos(np.radians(dec))
@@ -218,7 +216,7 @@ def parabolic_cylinder_f5_mod(x):
     return y
 
 
-def equatorial_XYZ(ra, dec, dist, dist_error):
+def equatorial_XYZ(ra, dec, dist, dist_error=None):
     """
     Transforms equatorial coordinates (ra,dec) and distance to Galactic position XYZ. All inputs must be numpy arrays of the same dimension.
 
@@ -240,6 +238,8 @@ def equatorial_XYZ(ra, dec, dist, dist_error):
     X = cos_gb * cos_gl * dist
     Y = cos_gb * sin_gl * dist
     Z = sin_gb * dist
+    if dist_error is None:
+        return X, Y, Z
 
     X_dist = cos_gb * cos_gl
     EX = np.abs(X_dist * dist_error)

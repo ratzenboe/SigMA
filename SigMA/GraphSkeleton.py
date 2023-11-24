@@ -1,7 +1,6 @@
 import numpy as np
 import nglpy
 from scipy.spatial import cKDTree
-from sklearn.neighbors import NearestNeighbors
 from sklearn.neighbors import kneighbors_graph
 from scipy.stats import norm
 from scipy.sparse import csr_matrix
@@ -27,43 +26,41 @@ class GraphSkeleton(DensityEstimator):
         self.setup()
 
     def setup(self):
-        # If metric_params are given, we build the graph with the given metric
-        if self.metric_params:
-            # Should be passed in the following way:
-            # metric_params = dict(metric='mahalanobis', metric_params={'V': np.cov(X_cluster.T)}, **other_kwargs)
-            self.A = kneighbors_graph(self.X, self.knn_initcluster_graph, n_jobs=-1, **self.metric_params)
         # If beta is given, we build the beta skeleton
-        elif isinstance(self.beta, (float, int)):
-            self.A = self.beta_adjacency(max_neighbors=self.knn_initcluster_graph, beta=self.beta)
+        if isinstance(self.beta, (float, int)):
+            self.A = self.beta_adjacency(
+                max_neighbors=self.knn_initcluster_graph, beta=self.beta
+            )
             # self.A = self.remove_edges()
         else:
             self.A = kneighbors_graph(self.X, self.knn_initcluster_graph, n_jobs=-1)
 
     def beta_adjacency(self, max_neighbors: int, beta: float):
         # Build beta skeleton
-        erg = nglpy.EmptyRegionGraph(max_neighbors=max_neighbors, relaxed=True, beta=beta)
+        erg = nglpy.EmptyRegionGraph(
+            max_neighbors=max_neighbors, relaxed=True, beta=beta
+        )
         erg.build(self.X)
         rows, cols = [], []
         for i, (node, edges) in enumerate(erg.neighbors().items()):
             rows.extend(len(edges) * [node])
             cols.extend(list(edges))
-        return csr_matrix((np.ones_like(rows), (rows, cols)), shape=(self.X.shape[0], self.X.shape[0]))
+        return csr_matrix(
+            (np.ones_like(rows), (rows, cols)), shape=(self.X.shape[0], self.X.shape[0])
+        )
 
-    def update_scale_factors(self, scale_factors: dict, metric_params: dict = dict()):
+    def update_scale_factors(self, scale_factors: dict):
         """Scale factor update inn Density layer as distances also need updating"""
         self.scale_factors = scale_factors
-        if self.metric_params != metric_params:
-            self.metric_params = metric_params
         # Update X
         self.X = self.init_cluster_data()
         # Update kd-tree
-        # self.kd_tree = cKDTree(data=self.X)
-        self.kd_tree = NearestNeighbors(n_jobs=-1, **self.metric_params).fit(self.X)
+        self.kd_tree = cKDTree(data=self.X)
         # Update distances
         self.distances = self.calc_distances()
         # Build graph
         self.setup()
-        return
+        return self
 
     # def remove_edges(self):
     #     # We remove edges where the mid-points between 2 vertices has a significant dip

@@ -10,7 +10,7 @@ def dense_sample(rho):
     mad = np.median(np.abs(rho - np.median(rho)))
     threshold = np.median(rho) * 0.995 + 3 * mad * 1.1
     if np.sum(rho > threshold) < 20:
-        threshold = np.percentile(rho, 90)
+        threshold = np.percentile(rho, 93)
     return rho > threshold
 
 
@@ -127,3 +127,46 @@ def bulk_velocity_solver(
         ra, dec, plx, pmra, pmdec, rv, pmra_err, pmdec_err, rv_err, **kwargs
     )
     return sol
+
+
+def bootstrap_bulk_velocity_solver(
+    data,
+    rho,
+    n_bootstraps=100,
+    ra_col="ra",
+    dec_col="dec",
+    plx_col="parallax",
+    pmra_col="pmra",
+    pmdec_col="pmdec",
+    rv_col="radial_velocity",
+    pmra_err_col="pmra_error",
+    pmdec_err_col="pmdec_error",
+    rv_err_col="radial_velocity_error",
+    **kwargs
+):
+    sol_boot = []
+    # iterate over bootstraps
+    for i in range(n_bootstraps):
+        sample = np.random.choice(
+            np.arange(data.shape[0]), size=data.shape[0], replace=True
+        )
+        data_sample = data.iloc[sample]
+        rho_sample = rho[sample]
+        sol_boot.append(
+            bulk_velocity_solver(
+                data_sample,
+                rho_sample,
+                ra_col=ra_col,
+                dec_col=dec_col,
+                plx_col=plx_col,
+                pmra_col=pmra_col,
+                pmdec_col=pmdec_col,
+                rv_col=rv_col,
+                pmra_err_col=pmra_err_col,
+                pmdec_err_col=pmdec_err_col,
+                rv_err_col=rv_err_col,
+                **kwargs
+            )
+        )
+
+    return sol_boot

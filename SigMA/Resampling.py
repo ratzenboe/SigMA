@@ -2,7 +2,7 @@ import numpy as np
 import copy
 from numba import jit
 from SigMA.DataLayer import DataLayer
-from scipy.spatial import cKDTree
+from scipy.spatial import KDTree
 
 
 class PerturbedData(DataLayer):
@@ -143,7 +143,7 @@ class PerturbedData(DataLayer):
                 cols = scale_info["features"]
                 sf = scale_info["factor"]
                 data_resampled[cols] *= sf
-            kd_tree_resample = cKDTree(data=data_resampled.values)
+            kd_tree_resample = KDTree(data=data_resampled.values)
             return kd_tree_resample
         else:
             raise ValueError(

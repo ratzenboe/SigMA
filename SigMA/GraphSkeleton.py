@@ -1,6 +1,6 @@
 import numpy as np
 import nglpy
-from scipy.spatial import cKDTree
+from scipy.spatial import KDTree
 from sklearn.neighbors import kneighbors_graph
 from scipy.stats import norm
 from scipy.sparse import csr_matrix
@@ -55,7 +55,7 @@ class GraphSkeleton(DensityEstimator):
         # Update X
         self.X = self.init_cluster_data()
         # Update kd-tree
-        self.kd_tree = cKDTree(data=self.X)
+        self.kd_tree = KDTree(data=self.X)
         # Update distances
         self.distances = self.calc_distances()
         # Build graph

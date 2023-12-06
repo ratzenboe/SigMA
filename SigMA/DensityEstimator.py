@@ -1,6 +1,6 @@
 import numpy as np
 from SigMA.DataLayer import DataLayer
-from scipy.spatial import cKDTree
+from scipy.spatial import KDTree
 
 
 class DensityEstimator(DataLayer):
@@ -43,7 +43,7 @@ class DensityEstKNN:
         """
         self.data = X
         self.max_neighbors = max_neighbors
-        self.kd_tree = cKDTree(data=X)
+        self.kd_tree = KDTree(data=X)
         self.distances = self.calc_distances()
 
     def calc_distances(self):

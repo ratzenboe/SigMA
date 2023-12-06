@@ -1,6 +1,7 @@
 import copy
 import pandas as pd
-from scipy.spatial import cKDTree
+# from scipy.spatial import cKDTree
+from scipy.spatial import KDTree
 
 
 class DataLayer:
@@ -24,7 +25,7 @@ class DataLayer:
         self.cluster_columns = cluster_features
         self.scale_factors = scale_factors
         self.X = self.init_cluster_data()
-        self.kd_tree = cKDTree(data=self.X)
+        self.kd_tree = KDTree(data=self.X)
         # Meta data
         self.meta_pos = None
         self.meta_vel = None
@@ -35,7 +36,7 @@ class DataLayer:
         self.scale_factors = scale_factors
         # Update data and kd-tree
         self.X = self.init_cluster_data()
-        self.kd_tree = cKDTree(data=self.X)
+        self.kd_tree = KDTree(data=self.X)
         return self
 
     def init_cluster_data(self):

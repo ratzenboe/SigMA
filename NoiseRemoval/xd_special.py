@@ -33,9 +33,9 @@ class XDSingleCluster:
     @staticmethod
     def EM_step(X, Xerr, mu, V):
         n_samples, n_features = X.shape
-        X = X[:, np.newaxis, :]
+        Xfit = X[:, np.newaxis, :]
         Xerr = Xerr[:, np.newaxis, :, :]
-        w_m = X - mu
+        w_m = Xfit - mu
         T = Xerr + V
         # ------------------------------------------------------------
         #  compute inverse of each covariance matrix T

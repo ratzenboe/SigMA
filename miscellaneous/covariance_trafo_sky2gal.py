@@ -14,12 +14,7 @@ TGAL = np.array(
 kappa = 0.004743717361
 
 
-def transform_(
-        ra,
-        dec,
-        plx,
-        C
-):
+def transform_covariance_shper2gal(ra, dec, plx, C):
     """
     Transforms the observed covariance matrix of on sky velocities (pmra, pmdec, radial_velocity) into the covariance matrix of space velocities (U,V,W). All inputs must be numpy arrays of the same dimension.
 
@@ -86,3 +81,4 @@ def transform_(
     # Calculate derivatives
     C_uvw = np.einsum('ijk, ikl, ilm -> ijm', jacobian, C, np.transpose(jacobian, (0, 2, 1)))
     return C_uvw
+

@@ -196,6 +196,7 @@ class ClusterConsensus:
             except ValueError:
                 # We break array here if no -1 samples are found
                 spurious = []
+                labels_cliques = np.ones(shape=(self.labels.shape[1],), dtype=np.int32) * -1
                 break
             # Set bg to -1 (by majority voting)
             if len(mode_decision[0] == -1) > 0:

@@ -13,13 +13,14 @@ def compute_pvalue(k, p, d_max, d_saddle):
 
 
 class GraphSkeleton(DensityEstimator):
-    def __init__(self, knn_initcluster_graph: int, beta: float, **kwargs):
+    def __init__(self, knn_initcluster_graph: int, beta: float, do_remove_edges: bool, **kwargs):
         """
         :param max_neighbors: maximal number of neighbors considered as graph edges
         :param beta: structure parameter of beta skeleton
         :param knn: Number of neighbors for
         """
         super().__init__(**kwargs)
+        self.do_remove_edges = do_remove_edges
         self.knn_initcluster_graph = knn_initcluster_graph
         self.beta = beta
         self.A = None
@@ -31,7 +32,8 @@ class GraphSkeleton(DensityEstimator):
             self.A = self.beta_adjacency(
                 max_neighbors=self.knn_initcluster_graph, beta=self.beta
             )
-            # self.A = self.remove_edges()
+            if self.do_remove_edges:
+                self.A = self.remove_edges()
         else:
             self.A = kneighbors_graph(self.X, self.knn_initcluster_graph, n_jobs=-1)
 
@@ -62,18 +64,18 @@ class GraphSkeleton(DensityEstimator):
         self.setup()
         return self
 
-    # def remove_edges(self):
-    #     # We remove edges where the mid-points between 2 vertices has a significant dip
-    #     # --> we choose 7 neighbors for this test to be aware of local changes
-    #     knn_test = 7
-    #     e1, e2 = self.A.nonzero()
-    #     midpts = (self.X[e1] + self.X[e2]) * 0.5
-    #     dists_midpoints, _ = self.kd_tree.query(midpts, k=knn_test, workers=-1)
-    #     d_saddle = np.max(dists_midpoints, axis=1)
-    #     dists = self.k_distance(knn_test)
-    #     d_max = np.max(np.vstack([dists[e1], dists[e2]]), axis=0)
-    #     pvals = compute_pvalue(k=knn_test, p=self.X.shape[-1], d_max=d_max, d_saddle=d_saddle)
-    #     keep_edges = pvals > 0.05  # 5% significance level
-    #     rows, cols = e1[keep_edges], e2[keep_edges]
-    #     A = csr_matrix((np.ones_like(rows), (rows, cols)), shape=(self.X.shape[0], self.X.shape[0]))
-    #     return A
+    def remove_edges(self):
+        # We remove edges where the mid-points between 2 vertices has a significant dip
+        # --> we choose 7 neighbors for this test to be aware of local changes
+        knn_test = 7
+        e1, e2 = self.A.nonzero()
+        midpts = (self.X[e1] + self.X[e2]) * 0.5
+        dists_midpoints, _ = self.kd_tree.query(midpts, k=knn_test, workers=-1)
+        d_saddle = np.max(dists_midpoints, axis=1)
+        dists = self.k_distance(knn_test)
+        d_max = np.max(np.vstack([dists[e1], dists[e2]]), axis=0)
+        pvals = compute_pvalue(k=knn_test, p=self.X.shape[-1], d_max=d_max, d_saddle=d_saddle)
+        keep_edges = pvals > 0.05  # 5% significance level
+        rows, cols = e1[keep_edges], e2[keep_edges]
+        A = csr_matrix((np.ones_like(rows), (rows, cols)), shape=(self.X.shape[0], self.X.shape[0]))
+        return A

@@ -17,6 +17,7 @@ class SigMA(ParameterClass, PerturbedData):
         max_knn_density: int = 100,
         beta: float = 0.99,
         knn_initcluster_graph: int = 70,
+        do_remove_edges: bool = False,
         hypothesis_test: str = "cct",
         transform_function=None,
     ):
@@ -51,6 +52,7 @@ class SigMA(ParameterClass, PerturbedData):
             # GraphSkeleton
             knn_initcluster_graph=knn_initcluster_graph,
             beta=beta,
+            do_remove_edges=do_remove_edges,
             # Resampling
             transform_function=transform_function,
         )

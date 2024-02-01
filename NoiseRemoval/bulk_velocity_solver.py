@@ -3,15 +3,36 @@ from NoiseRemoval.gagne_helper_functions import equatorial_XYZ
 from astropy.coordinates import Galactic, CartesianDifferential, ICRS
 from astropy import units as u
 from scipy import optimize, stats
+from scipy.sparse.csgraph import connected_components
 
-
-def dense_sample(rho):
+def dense_sample(rho, A=None, n_dense=500):
     """Extract the densest points from the density distribution."""
     mad = np.median(np.abs(rho - np.median(rho)))
     threshold = np.median(rho) * 0.995 + 3 * mad * 1.1
     if np.sum(rho > threshold) < 20:
         threshold = np.percentile(rho, 93)
-    return rho > threshold
+        dense_component = rho > threshold
+    elif np.sum(rho > threshold) > n_dense:
+        # Get indices of 500 densest points
+        idx_dense = np.argsort(rho)[-n_dense:]
+        dense_component = np.isin(np.arange(len(rho)), idx_dense)
+    else:
+        dense_component = rho > threshold
+
+    # Get single connected component from A
+    if A is not None:
+        data_idx = np.arange(len(rho))
+        # Keep connected components
+        _, cc_idx = connected_components(
+            A[dense_component, :][:, dense_component]
+        )
+        # Combine CCs data points with originally defined dense core (to not miss out on potentially dropped points)
+        cluster_indices = data_idx[dense_component][
+            cc_idx == np.argmax(np.bincount(cc_idx))
+            ]
+        return np.isin(data_idx, cluster_indices)
+    else:
+        return dense_component
 
 
 def ll_skycoods(

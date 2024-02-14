@@ -387,8 +387,9 @@ def remove_noise_sigma(
         return final_clustering_strict, contamination_completeness, rv_info, False
 
 
-def remove_noise_simple(cluster_bool_arr, te_obj, adjacency_mtrx=None):
+def remove_noise_simple(cluster_bool_arr, te_obj):
     """Remove noise with only gmms"""
+    adjacency_mtrx = te_obj.A
     # ----- Part-I: extract dense core -------
     data_idx = np.arange(te_obj.X.shape[0])
     # Get most dense components in the given cluster

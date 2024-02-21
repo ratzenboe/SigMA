@@ -39,7 +39,8 @@ class ErrorSampler:
     def build_covariance_matrix(self):
         """Create covariance matrix from input features"""
         # Assign X_orig
-        self.X_orig = self.data[self.astrometric_features].values
+        self.X_orig = self.data[self.astrometric_features]
+        self.X_orig = self.X_orig.fillna(0, inplace=False).values
         # Start building covariance matrix
         nb_points, nb_covfeats = self.data.shape[0], len(self.astrometric_features)
         # Initialize empty covariance matrix

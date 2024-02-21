@@ -326,5 +326,6 @@ class ParameterClass(GraphSkeleton):
                 if pval_final > alpha:
                     uf_union(pg, pn, parents, densities)
 
+
         labels = np.array([uf_find(n, parents) for n in range(num_pts)])
         return labels, pvalues_all

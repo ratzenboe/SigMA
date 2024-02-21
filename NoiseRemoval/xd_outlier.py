@@ -1,11 +1,6 @@
 from scipy.special import logsumexp
 import numpy as np
-
-
-
-from scipy.special import logsumexp
-import numpy as np
-
+from sklearn.covariance import MinCovDet
 
 
 class XDOutlier:
@@ -16,22 +11,42 @@ class XDOutlier:
     >>> mu, V = xds.min_entropy_component()
     """
 
-    def __init__(self, max_iter=200, tol=1e-3):
+    def __init__(self, max_iter=200, tol=1e-3, max_alpha=0.95):
         self.max_iter = max_iter
         self.tol = tol
+        self.max_alpha = max_alpha
         self.mu = None
         self.V = None
         self.alpha = None
 
-    def fit(self, X, Xerr):
+    def set_max_alpha(self, max_alpha):
+        """Set the maximum alpha value for the outlier component."""
+        self.max_alpha = max_alpha
+
+    def estimate_init_params(self, X, rv_not_nan=None):
+        """Estimate the bulk velocity of the cluster."""
         _, n_features = X.shape
-        mu = np.mean(X, axis=0)
-        V = np.cov(X, rowvar=False)
+        # Compute inital estiamate for mean velocity and covariance matrix using MCD
+        if rv_not_nan is not None:
+            mcd = MinCovDet().fit(X[rv_not_nan])
+            # Extract mean and covariance matrix
+            mu = mcd.location_
+            V = mcd.covariance_
+        else:
+            # Extract mean and covariance matrix
+            mu = np.mean(X, axis=0)
+            V = np.cov(X, rowvar=False)
+
         # Add second component for outlier
         mu = np.vstack((mu, np.zeros(n_features)))
         V = np.r_[V[np.newaxis, :, :], np.eye(n_features)[np.newaxis, :, :] * 1e10]
         alpha = np.array([0.8, 0.2])
 
+        return mu, V, alpha
+
+    def fit(self, X, Xerr, rv_not_nan=None):
+        mu, V, alpha = self.estimate_init_params(X, rv_not_nan=rv_not_nan)
+        # Start EM algorithm
         logL = self.logpdf_gmm(X, Xerr, mu, V, alpha)
         for i in range(self.max_iter):
             mu, V, alpha = self.EM_step_outlier(X, Xerr, mu, V, alpha)
@@ -40,7 +55,6 @@ class XDOutlier:
             if logL_next < logL + self.tol:
                 break
             logL = logL_next
-
         self.mu = mu
         self.V = V
         self.alpha = alpha
@@ -48,9 +62,12 @@ class XDOutlier:
 
     def EM_step_outlier(self, X, Xerr, mu_fit, V_fit, alpha):
         n_samples, n_features = X.shape
-        if np.max(alpha) > 0.9:
+        if np.max(alpha) > self.max_alpha:
             # Cluster component might not fit properly if outlier component can vanish
-            alpha = np.array([0.9, 0.1])
+            idx_min = np.argmin(alpha)
+            idx_max = np.argmax(alpha)
+            alpha[idx_min] = 1- self.max_alpha
+            alpha[idx_max] = self.max_alpha
         # Add outlier component: mu = 0, V = 1e10
         X_fit = X[:, np.newaxis, :]
         w_m = X_fit - mu_fit

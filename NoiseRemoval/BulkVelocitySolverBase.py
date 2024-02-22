@@ -2,7 +2,7 @@ import numpy as np
 import copy
 from NoiseRemoval.OptimalVelocity import vr_solver
 from miscellaneous.error_sampler import ErrorSampler
-
+from sklearn.covariance import MinCovDet
 
 
 class VelocityEstimatorBase:
@@ -65,3 +65,9 @@ class VelocityEstimatorBase:
         ra, dec, plx, pmra, pmdec, rv = self.estimate_rv(cluster_subset, return_full=True, **kwargs)
         # Compute UVW
         return self.err_sampler.spher2cart(np.vstack((ra, dec, plx, pmra, pmdec, rv)).T)[:, 3:]
+
+    def estimate_normal_params(self, cluster_subset=None, **kwargs):
+        support_fraction = kwargs.pop('support_fraction', None)
+        UVW = self.estimate_uvw(cluster_subset, **kwargs)
+        mcd = MinCovDet(support_fraction=support_fraction).fit(UVW)
+        return mcd.location_, mcd.covariance_

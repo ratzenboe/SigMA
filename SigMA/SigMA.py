@@ -5,6 +5,7 @@ from SigMA.Parameters import ParameterClass
 from SigMA.hypothesis_test_utils import correct_pvals_benjamini_hochberg
 from collections import defaultdict
 from itertools import groupby
+from coordinate_transformations.sky_convert import transform_sphere_to_cartesian, idenity_transform
 
 
 class SigMA(ParameterClass, PerturbedData):
@@ -58,20 +59,41 @@ class SigMA(ParameterClass, PerturbedData):
         )
         self.hypothesis_test = hypothesis_test
         # Resampling info
-        self.nb_resampling = nb_resampling if transform_function is not None else 0
-        if nb_resampling > 0:
-            self.build_covariance_matrix()
-            print("Creating k-d trees of resampled data sets...")
-            self.resampled_kdtrees = [
-                self.create_kdtree() for _ in range(self.nb_resampling)
-            ]
-
+        self.nb_resampling = nb_resampling
+        self.handle_resampling(nb_resampling=nb_resampling)
         # Saddle point information
         self.saddle_dknn = defaultdict(frozenset)
         self.cluster_saddle_points = defaultdict(frozenset)
         self.saddles_per_modes_density = None
         self.mode_neighbor_dict = None
         self.labels_ = None
+
+    def handle_resampling(self, nb_resampling: int):
+        if nb_resampling > 0:
+            do_resmapling = True
+            if self.transform_function is None:
+                # --- Automatrically set transformation function
+                self.auto_infer_feature_space()
+                # Currently only two cases are supported
+                if (self.meta_pos == "spherical") and (self.meta_vel == "spherical"):
+                    self.transform_function = idenity_transform
+                elif (self.meta_pos == "cartesian") and (self.meta_vel == "cartesian"):
+                    self.transform_function = transform_sphere_to_cartesian
+                else:
+                    do_resmapling = False
+                    print(
+                        "Warning: No transformation function provided! Resampling not possible!"
+                    )
+
+            if do_resmapling:
+                self.build_covariance_matrix()
+                print("Creating k-d trees of resampled data sets...")
+                self.resampled_kdtrees = [
+                    self.create_kdtree() for _ in range(self.nb_resampling)
+                ]
+            else:
+                self.nb_resampling = 0
+        return
 
     def set_scaling_factors(self, scale_factors: dict):
         """Change scale factors and re-initialize clustering"""

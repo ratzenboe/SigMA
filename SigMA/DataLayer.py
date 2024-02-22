@@ -28,7 +28,6 @@ class DataLayer:
         # Meta data
         self.meta_pos = None
         self.meta_vel = None
-        self.auto_infer_feature_space()
 
     def update_scaling_factors(self, scale_factors: dict):
         """Change scale factors and re-initialize clustering"""
@@ -56,7 +55,7 @@ class DataLayer:
             self.meta_pos = "spherical"
         else:
             print(
-                "Positional information cannot be inferred from data frame! "
+                "Warning: Positional information cannot be inferred from data frame! "
                 "User must pass transformation function for resampling!"
             )
         # Velocity information
@@ -80,7 +79,7 @@ class DataLayer:
             self.meta_vel = "spherical_lsr"
         else:
             print(
-                "Velocity information cannot be inferred from data frame! "
+                "Warning: Velocity information cannot be inferred from data frame! "
                 "User must pass transformation function for resampling!"
             )
         return self

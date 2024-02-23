@@ -3,6 +3,7 @@ import copy
 from NoiseRemoval.OptimalVelocity import vr_solver
 from miscellaneous.error_sampler import ErrorSampler
 from sklearn.covariance import MinCovDet
+from NoiseRemoval.ClusterGMM import gmm_cut
 
 
 class VelocityEstimatorBase:
@@ -12,6 +13,7 @@ class VelocityEstimatorBase:
         self.data = self.set_data(data)
         self.data_idx = np.arange(data.shape[0])
         self.err_sampler = ErrorSampler()
+        self.res = None
 
     def _subset_handler(self, cluster_subset, bool_array=None):
         # Type checks
@@ -42,9 +44,9 @@ class VelocityEstimatorBase:
 
     def estimate_rv(self, cluster_subset=None, return_full=False, **kwargs):
         # Estimate mean UVW
-        res = self.fit(cluster_subset, **kwargs)
+        self.res = self.fit(cluster_subset, **kwargs)
         # Get estimated UVW
-        U, V, W = res.x[:3]
+        U, V, W = self.res.x[:3]
         # Get observed data
         cols_sphere = ['ra', 'dec', 'parallax', 'pmra', 'pmdec']
         ra, dec, plx, pmra, pmdec = self.data.loc[self._subset_handler(cluster_subset), cols_sphere].values.T
@@ -68,6 +70,16 @@ class VelocityEstimatorBase:
 
     def estimate_normal_params(self, cluster_subset=None, **kwargs):
         support_fraction = kwargs.pop('support_fraction', None)
+        remove_outliers = kwargs.pop('remove_outliers', True)
+        # Estimate UVW of all stars
         UVW = self.estimate_uvw(cluster_subset, **kwargs)
+        # Remove outliers far away from the mean
+        if remove_outliers:
+            mean_uvw = self.res.x[:3]
+            dist2mean = np.linalg.norm(UVW - mean_uvw, axis=1)
+            # Maximally allowed distance from the mean = 10 km/s
+            th = min(gmm_cut(dist2mean)[2], 10)
+            UVW = UVW[dist2mean < th]
+
         mcd = MinCovDet(support_fraction=support_fraction).fit(UVW)
         return mcd.location_, mcd.covariance_

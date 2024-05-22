@@ -9,7 +9,9 @@ class ErrorSampler:
     def __init__(self, data=None):
         self.data = data
         # Define necessary features
-        self.astrometric_features = ["ra", "dec", "parallax", "pmra", "pmdec", "radial_velocity"]
+        self.astrometric_features = [
+            "ra", "dec", "parallax", "pmra", "pmdec", "radial_velocity"
+        ]
         self.astrometric_errors = [
             "ra_error",
             "dec_error",

@@ -29,8 +29,10 @@ class ClassicBV(VelocityEstimatorBase):
 
     def fit(self, cluster_subset=None, method='BFGS'):
         data_subset = self.data.loc[self._subset_handler(cluster_subset)]
-        cols = ['ra', 'dec', 'parallax', 'pmra', 'pmdec', 'radial_velocity', 'pmra_error', 'pmdec_error',
-                'radial_velocity_error']
+        cols = [
+            'ra', 'dec', 'parallax', 'pmra', 'pmdec', 'radial_velocity', 'pmra_error', 'pmdec_error',
+            'radial_velocity_error'
+        ]
         ra, dec, plx, pmra, pmdec, rv, pmra_err, pmdec_err, rv_err = data_subset[cols].values.T
         # Transform data to XYZ
         X_hat, Y_hat, Z_hat = equatorial_XYZ(ra, dec, 1000 / plx)

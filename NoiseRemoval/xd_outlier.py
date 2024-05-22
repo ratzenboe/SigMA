@@ -6,7 +6,7 @@ from sklearn.covariance import MinCovDet
 class XDOutlier:
     """Class to compute the bulk velocity of a single cluster using XD.
     Usage example:
-    >>> from SigMA.NoiseRemoval.xd_special import XDOutlier
+    >>> from SigMA.NoiseRemoval.xd_outlier import XDOutlier
     >>> xds = XDOutlier().fit(X, Xerr)
     >>> mu, V = xds.min_entropy_component()
     """

@@ -4,6 +4,7 @@ from NoiseRemoval.OptimalVelocity import vr_solver
 from miscellaneous.error_sampler import ErrorSampler
 from sklearn.covariance import MinCovDet
 from NoiseRemoval.ClusterGMM import gmm_cut
+from scipy.spatial.distance import mahalanobis
 
 
 class VelocityEstimatorBase:
@@ -42,11 +43,14 @@ class VelocityEstimatorBase:
         data.loc[self.rv_isnan, 'radial_velocity'] = 0.0
         return data
 
-    def estimate_rv(self, cluster_subset=None, return_full=False, **kwargs):
-        # Estimate mean UVW
-        self.res = self.fit(cluster_subset, **kwargs)
-        # Get estimated UVW
-        U, V, W = self.res.x[:3]
+    def estimate_rv(self, UVW=None, cluster_subset=None, return_full=False, **kwargs):
+        if isinstance(UVW, (np.ndarray, list, tuple)):
+            U, V, W = UVW
+        else:
+            # Estimate mean UVW
+            self.res = self.fit(cluster_subset, **kwargs)
+            # Get estimated UVW
+            U, V, W = self.res.x[:3]
         # Get observed data
         cols_sphere = ['ra', 'dec', 'parallax', 'pmra', 'pmdec']
         ra, dec, plx, pmra, pmdec = self.data.loc[self._subset_handler(cluster_subset), cols_sphere].values.T
@@ -62,19 +66,19 @@ class VelocityEstimatorBase:
         else:
             return rv
 
-    def estimate_uvw(self, cluster_subset=None, **kwargs):
+    def estimate_uvw(self, UVW=None, cluster_subset=None, **kwargs):
         # Estimate mean UVW
-        ra, dec, plx, pmra, pmdec, rv = self.estimate_rv(cluster_subset, return_full=True, **kwargs)
+        ra, dec, plx, pmra, pmdec, rv = self.estimate_rv(UVW, cluster_subset, return_full=True, **kwargs)
         # Compute UVW
         return self.err_sampler.spher2cart(np.vstack((ra, dec, plx, pmra, pmdec, rv)).T)[:, 3:]
 
-    def estimate_normal_params(self, cluster_subset=None, **kwargs):
+    def estimate_normal_params(self, UVW=None, cluster_subset=None, **kwargs):
         support_fraction = kwargs.pop('support_fraction', None)
         remove_outliers = kwargs.pop('remove_outliers', True)
         # Estimate UVW of all stars
-        UVW = self.estimate_uvw(cluster_subset, **kwargs)
+        UVW = self.estimate_uvw(UVW, cluster_subset, **kwargs)
         # Remove outliers far away from the mean
-        if remove_outliers:
+        if remove_outliers and UVW.shape[0] > 20:
             mean_uvw = self.res.x[:3]
             dist2mean = np.linalg.norm(UVW - mean_uvw, axis=1)
             # Maximally allowed distance from the mean = 10 km/s
@@ -83,3 +87,12 @@ class VelocityEstimatorBase:
 
         mcd = MinCovDet(support_fraction=support_fraction).fit(UVW)
         return mcd.location_, mcd.covariance_
+
+    def mahalanobis_distance(self, uvw_mean, cov, cluster_subset=None):
+        UVW = self.estimate_uvw(UVW=uvw_mean, cluster_subset=cluster_subset)
+        C_inv = np.linalg.inv(cov)
+        maha_dists = [mahalanobis(uvw_i, uvw_mean, C_inv) for uvw_i in UVW]
+        return np.array(maha_dists)
+
+    def fit(self, cluster_subset, param):
+        pass

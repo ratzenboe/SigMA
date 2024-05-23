@@ -142,6 +142,8 @@ class ErrorSampler:
         c.representation_type = 'spherical'
         ra, dec, dist = c.ra.value, c.dec.value, c.distance.value
         pmra, pmdec, rv = c.pm_ra.value, c.pm_dec.value, c.radial_velocity.value
+        # !! Attention: the pmra is not yet corrected for cos(dec) !!
+        # pmra *= np.cos(np.radians(dec))   <-- this is how it should be done (watch out in downstream analysis)
         parallax = 1000 / dist
         return ra, dec, parallax, pmra, pmdec, rv
 

@@ -188,7 +188,7 @@ class ClusterConsensus:
         # We remove small cliques/clusters
         # --> This spurious cluster/clique removal produces -1 results where another clique might shine
         # --> we go back to voting arr, remove those cliques and vote again
-        mode_decision, _ = mode(self.labels, axis=0)
+        mode_decision, _ = mode(self.labels, keepdims=True)
         spurious = [1]
         while len(spurious) > 0:
             try:

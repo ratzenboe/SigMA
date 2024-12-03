@@ -16,7 +16,8 @@ kappa = 0.004743717361
 
 def transform_covariance_shper2gal(ra, dec, plx, C):
     """
-    Transforms the observed covariance matrix of on sky velocities (pmra, pmdec, radial_velocity) into the covariance matrix of space velocities (U,V,W). All inputs must be numpy arrays of the same dimension.
+    Transforms the observed covariance matrix of on sky velocities (pmra, pmdec, radial_velocity)
+    into the covariance matrix of space velocities (U,V,W). All inputs must be numpy arrays of the same dimension.
 
     param ra: Right ascension (degrees)
     param dec: Declination (degrees)

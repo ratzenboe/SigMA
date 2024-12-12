@@ -21,6 +21,7 @@ class SigMA(ParameterClass, PerturbedData):
         do_remove_edges: bool = False,
         hypothesis_test: str = "cct",
         transform_function=None,
+        kd_tree_data: pd.DataFrame = None
     ):
         """High-level class applying the SigMA_v0 clustering analysis
         data: pandas data frame
@@ -56,6 +57,8 @@ class SigMA(ParameterClass, PerturbedData):
             do_remove_edges=do_remove_edges,
             # Resampling
             transform_function=transform_function,
+            # KDTree
+            kd_tree_data=kd_tree_data
         )
         self.hypothesis_test = hypothesis_test
         # Resampling info

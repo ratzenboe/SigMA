@@ -9,6 +9,7 @@ class DataLayer:
         data: pd.DataFrame,
         cluster_features: list,
         scale_factors: dict = None,
+        kd_tree_data: pd.DataFrame = None,
         **kwargs
     ):
         """Class calculating densities on given data X
@@ -23,22 +24,35 @@ class DataLayer:
         self.data = data
         self.cluster_columns = cluster_features
         self.scale_factors = scale_factors
-        self.X = self.init_cluster_data()
-        self.kd_tree = KDTree(data=self.X)
+        self.kd_tree_data = kd_tree_data
+        self.X = self.init_cluster_data(data)
+        self.kd_tree = self.init_kd_tree(kd_tree_data)
         # Meta data
         self.meta_pos = None
         self.meta_vel = None
+
+    def set_kd_tree_data(self, kd_tree_data: pd.DataFrame):
+        self.kd_tree_data = kd_tree_data
+        self.kd_tree = self.init_kd_tree(kd_tree_data)
+        return self
+
+    def init_kd_tree(self, kd_tree_data=None):
+        if kd_tree_data is None:
+            kd_tree_data_X = self.X
+        else:
+            kd_tree_data_X = self.init_cluster_data(kd_tree_data)
+        return KDTree(data=kd_tree_data_X)
 
     def update_scaling_factors(self, scale_factors: dict):
         """Change scale factors and re-initialize clustering"""
         self.scale_factors = scale_factors
         # Update data and kd-tree
-        self.X = self.init_cluster_data()
-        self.kd_tree = KDTree(data=self.X)
+        self.X = self.init_cluster_data(self.data)
+        self.kd_tree = self.init_kd_tree(self.kd_tree_data)
         return self
 
-    def init_cluster_data(self):
-        X = copy.deepcopy(self.data[self.cluster_columns])
+    def init_cluster_data(self, data=None):
+        X = copy.deepcopy(data[self.cluster_columns])
         if self.scale_factors is not None:
             for scale_info in self.scale_factors.values():
                 cols = scale_info["features"]

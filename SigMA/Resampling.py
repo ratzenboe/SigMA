@@ -44,6 +44,7 @@ class PerturbedData(DataLayer):
     def build_covariance_matrix(self):
         """Create covariance matrix from input features"""
         # Assign X_orig
+        # TODO: Modify resampling also for kd_tree_data --> currently only for data
         self.X_orig = self.data[self.astrometric_features].values
         # Start building covariance matrix
         nb_points, nb_covfeats = self.X.shape[0], len(self.astrometric_features)

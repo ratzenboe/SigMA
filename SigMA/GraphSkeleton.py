@@ -55,9 +55,9 @@ class GraphSkeleton(DensityEstimator):
         """Scale factor update inn Density layer as distances also need updating"""
         self.scale_factors = scale_factors
         # Update X
-        self.X = self.init_cluster_data()
+        self.X = self.init_cluster_data(self.data)
         # Update kd-tree
-        self.kd_tree = KDTree(data=self.X)
+        self.kd_tree = self.init_kd_tree(self.kd_tree_data)
         # Update distances
         self.distances = self.calc_distances()
         # Build graph

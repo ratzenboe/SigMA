@@ -158,7 +158,9 @@ class ClusterConsensus:
             (self.labels_bool_dict2arr[i].astype(int) + self.labels_bool_dict2arr[j].astype(int)) == 2)
         return intersection / min(nb_i, nb_j)
 
-    def fit(self, density, min_cluster_size, similarity_match='similarity', norm=False, aggregation_function=None):
+    def fit(self, density=None, min_cluster_size=20, similarity_match='similarity', norm=False, aggregation_function=None, min_frac_bg=0.5):
+        if density is None:
+            density = np.ones_like(self.labels[0], dtype=np.float32)
         # Remove bad connections
         H = self.remove_edges_density(density)
         # Get cliques
@@ -188,8 +190,11 @@ class ClusterConsensus:
         # We remove small cliques/clusters
         # --> This spurious cluster/clique removal produces -1 results where another clique might shine
         # --> we go back to voting arr, remove those cliques and vote again
-        mode_decision, _ = mode(self.labels, keepdims=True)
+        mode_decision, mode_count = mode(self.labels, keepdims=True)
         spurious = [1]
+        # Minimum times a sources is considered background if it was not in the majority
+        min_nb_bg = min_frac_bg * np.max(mode_count[0])
+
         while len(spurious) > 0:
             try:
                 labels_cliques = np.argmax(voting_arr, axis=0)
@@ -199,8 +204,8 @@ class ClusterConsensus:
                 labels_cliques = np.ones(shape=(self.labels.shape[1],), dtype=np.int32) * -1
                 break
             # Set bg to -1 (by majority voting)
-            if len(mode_decision[0] == -1) > 0:
-                labels_cliques[mode_decision[0] == -1] = -1
+            if np.sum(mode_decision[0] == -1) > 0:
+                labels_cliques[(mode_decision[0] == -1) & (mode_count[0] >= min_nb_bg)] = -1
                 # Remove very small clusters
                 unique, counts = np.unique(labels_cliques, return_counts=True)
                 spurious = unique[counts < min_cluster_size]
